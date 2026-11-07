@@ -80,50 +80,151 @@ static void put_obst(RoomState *r, uint8_t type, uint8_t tx, uint8_t ty)
     r->n_obst++;
 }
 
-static void layout_obstacles(RoomState *r)
+/* tuile jouable : hors des bords et des couloirs devant les portes */
+static uint8_t safe_tile(uint8_t tx, uint8_t ty)
 {
-    switch (rng_range(7)) {
-    case 0:
+    if (tx < 2 || tx > 15 || ty < 2 || ty > 10) return 0;
+    if (tx >= 6 && tx <= 11 && (ty <= 2 || ty >= 10)) return 0; /* couloirs N/S */
+    if (ty >= 5 && ty <= 7 && (tx <= 2 || tx >= 15)) return 0;  /* couloirs W/E */
+    return 1;
+}
+
+static void put_safe(RoomState *r, uint8_t type, uint8_t tx, uint8_t ty)
+{
+    if (safe_tile(tx, ty)) put_obst(r, type, tx, ty);
+}
+
+/* population d'obstacles propre a chaque etage */
+static uint8_t pool_obst(uint8_t floor)
+{
+    uint8_t roll = (uint8_t)rng_range(100);
+    if (floor <= 1) {            /* cave : rochers, poops, quelques feux/cactus */
+        if (roll < 48)  return OB_ROCK;
+        if (roll < 60)  return OB_ROCK2;
+        if (roll < 74)  return OB_POOP;
+        if (roll < 80)  return OB_BONES;
+        if (roll < 92)  return OB_FIRE;
+        return OB_CACTUS;
+    }
+    if (floor == 2) {            /* etage 2 : maconnerie et premieres fosses */
+        if (roll < 26) return OB_ROCK;
+        if (roll < 46) return OB_ROCK2;
+        if (roll < 61) return OB_BLOCK;
+        if (roll < 78) return OB_PIT;
+        if (roll < 90) return OB_SPIKE;
+        return OB_FIRE;
+    }
+    if (roll < 18) return OB_ROCK;   /* profondeurs : os et fosses dominent */
+    if (roll < 40) return OB_ROCK2;
+    if (roll < 60) return OB_BLOCK;
+    if (roll < 82) return OB_PIT;
+    return OB_BONES;
+}
+
+static void layout_obstacles(RoomState *r, uint8_t floor)
+{
+    switch (rng_range(12)) {
+    case 0: /* salle quasi vide, un ou deux tas decoratifs */
+        if (rng_range(2)) put_safe(r, OB_POOP, 4, 4);
+        if (rng_range(2)) put_safe(r, OB_BONES, 12, 8);
         break;
-    case 1: /* carre central de rochers */
-        put_obst(r, OB_ROCK, 7, 5);
-        put_obst(r, OB_ROCK, 10, 5);
-        put_obst(r, OB_ROCK, 7, 7);
-        put_obst(r, OB_ROCK, 10, 7);
-        put_obst(r, OB_ROCK, 8, 6);
+    case 1: /* carre central */
+        put_safe(r, pool_obst(floor), 7, 5);
+        put_safe(r, pool_obst(floor), 10, 5);
+        put_safe(r, pool_obst(floor), 7, 7);
+        put_safe(r, pool_obst(floor), 10, 7);
+        put_safe(r, pool_obst(floor), 8, 6);
         break;
-    case 2: /* deux rangees horizontales etroitees */
-        put_obst(r, OB_ROCK, 4, 6);
-        put_obst(r, OB_ROCK, 5, 6);
-        put_obst(r, OB_ROCK, 6, 6);
-        put_obst(r, OB_ROCK, 11, 6);
-        put_obst(r, OB_ROCK, 12, 6);
-        put_obst(r, OB_ROCK, 13, 6);
+    case 2: /* deux rangees horizontales decalees */
+        put_safe(r, pool_obst(floor), 5, 4);
+        put_safe(r, pool_obst(floor), 6, 4);
+        put_safe(r, pool_obst(floor), 7, 4);
+        put_safe(r, pool_obst(floor), 10, 8);
+        put_safe(r, pool_obst(floor), 11, 8);
+        put_safe(r, pool_obst(floor), 12, 8);
         break;
-    case 3: /* pics dans les angles */
-        put_obst(r, OB_SPIKE, 3, 3);
-        put_obst(r, OB_SPIKE, 14, 3);
-        put_obst(r, OB_SPIKE, 3, 9);
-        put_obst(r, OB_SPIKE, 14, 9);
+    case 3: /* piliers aux angles */
+        put_safe(r, pool_obst(floor), 3, 3);
+        put_safe(r, pool_obst(floor), 14, 3);
+        put_safe(r, pool_obst(floor), 3, 9);
+        put_safe(r, pool_obst(floor), 14, 9);
+        put_safe(r, pool_obst(floor), 8, 6);
         break;
-    case 4: /* feux */
-        put_obst(r, OB_FIRE, 5, 6);
-        put_obst(r, OB_FIRE, 12, 6);
+    case 4: /* fosses en diagonale oppossee */
+        put_safe(r, OB_PIT, 3, 3);
+        put_safe(r, OB_PIT, 4, 3);
+        put_safe(r, OB_PIT, 3, 4);
+        put_safe(r, OB_PIT, 13, 9);
+        put_safe(r, OB_PIT, 14, 9);
+        put_safe(r, OB_PIT, 14, 8);
         break;
-    case 5: /* piliers */
-        put_obst(r, OB_ROCK, 3, 3);
-        put_obst(r, OB_ROCK, 14, 3);
-        put_obst(r, OB_ROCK, 3, 9);
-        put_obst(r, OB_ROCK, 14, 9);
-        put_obst(r, OB_ROCK, 8, 6);
-        put_obst(r, OB_ROCK, 9, 6);
+    case 5: /* couloir de maconnerie indestructible */
+        put_safe(r, OB_BLOCK, 5, 4);
+        put_safe(r, OB_BLOCK, 5, 6);
+        put_safe(r, OB_BLOCK, 5, 8);
+        put_safe(r, OB_BLOCK, 12, 4);
+        put_safe(r, OB_BLOCK, 12, 6);
+        put_safe(r, OB_BLOCK, 12, 8);
         break;
-    default: /* mixte */
-        put_obst(r, OB_ROCK, 6, 4);
-        put_obst(r, OB_SPIKE, 6, 8);
-        put_obst(r, OB_ROCK, 11, 8);
-        put_obst(r, OB_FIRE, 11, 4);
+    case 6: /* grande fosse centrale a deux rangees */
+        put_safe(r, OB_PIT, 7, 4);
+        put_safe(r, OB_PIT, 8, 4);
+        put_safe(r, OB_PIT, 9, 4);
+        put_safe(r, OB_PIT, 7, 7);
+        put_safe(r, OB_PIT, 8, 7);
+        put_safe(r, OB_PIT, 9, 7);
         break;
+    case 7: /* pics aux quatres coins et coeur variable */
+        put_safe(r, OB_SPIKE, 4, 4);
+        put_safe(r, OB_SPIKE, 13, 4);
+        put_safe(r, OB_SPIKE, 4, 8);
+        put_safe(r, OB_SPIKE, 13, 8);
+        put_safe(r, pool_obst(floor), 7, 6);
+        put_safe(r, pool_obst(floor), 10, 6);
+        break;
+    case 8: /* couronne autour du centre libre */
+        put_safe(r, pool_obst(floor), 7, 4);
+        put_safe(r, pool_obst(floor), 10, 4);
+        put_safe(r, pool_obst(floor), 5, 6);
+        put_safe(r, pool_obst(floor), 12, 6);
+        put_safe(r, pool_obst(floor), 7, 8);
+        put_safe(r, pool_obst(floor), 10, 8);
+        break;
+    case 9: /* damier en rangees decalees */
+        put_safe(r, pool_obst(floor), 4, 3);
+        put_safe(r, pool_obst(floor), 7, 3);
+        put_safe(r, pool_obst(floor), 10, 3);
+        put_safe(r, pool_obst(floor), 13, 3);
+        put_safe(r, pool_obst(floor), 4, 7);
+        put_safe(r, pool_obst(floor), 7, 7);
+        put_safe(r, pool_obst(floor), 10, 7);
+        put_safe(r, pool_obst(floor), 13, 7);
+        break;
+    case 10: /* colonnes laterales, couloir axial libre */
+        put_safe(r, pool_obst(floor), 3, 4);
+        put_safe(r, pool_obst(floor), 3, 6);
+        put_safe(r, pool_obst(floor), 3, 8);
+        put_safe(r, pool_obst(floor), 14, 4);
+        put_safe(r, pool_obst(floor), 14, 6);
+        put_safe(r, pool_obst(floor), 14, 8);
+        break;
+    default: /* hall : deux rangees de trois */
+        put_safe(r, pool_obst(floor), 6, 4);
+        put_safe(r, pool_obst(floor), 8, 4);
+        put_safe(r, pool_obst(floor), 10, 4);
+        put_safe(r, pool_obst(floor), 6, 7);
+        put_safe(r, pool_obst(floor), 8, 7);
+        put_safe(r, pool_obst(floor), 10, 7);
+        break;
+    }
+    /* densite croissante : obstacles epars supplementaires aux etages 2-3 */
+    if (floor >= 2) {
+        uint8_t extra = (uint8_t)(floor == 2 ? 2 : 3);
+        while (extra--) {
+            put_safe(r, pool_obst(floor),
+                     (uint8_t)(3 + rng_range(13)),
+                     (uint8_t)(3 + rng_range(8)));
+        }
     }
 }
 
@@ -392,7 +493,7 @@ void gen_floor(Game *g, uint8_t floor)
     for (i = 0; i < g->n_rooms; i++) {
         RoomState *r = &g->rooms[i];
         if (r->kind != RM_NORMAL) continue;
-        layout_obstacles(r);
+        layout_obstacles(r, floor);
         /* ~1 chance sur 10 d'un pickup initial */
         if (rng_range(10) == 0 && r->n_pick < MAX_PICKUPS) {
             uint8_t type = (uint8_t)(PK_HEART + rng_range(5));

@@ -57,6 +57,9 @@ converts:
     palette: global_palette
     transparent-color-index: 0
     images:
+      - block.png
+      - bones.png
+      - cactus.png
       - caine_0.png
       - caine_1.png
       - caine_h.png
@@ -126,10 +129,13 @@ converts:
       - pickup_key.png
       - pickup_silver.png
       - pickup_soul.png
+      - pit.png
+      - poop.png
       - pooter_0.png
       - pooter_1.png
       - pooter_c.png
       - rock.png
+      - rock2.png
       - spike.png
       - tear.png
       - trapdoor.png

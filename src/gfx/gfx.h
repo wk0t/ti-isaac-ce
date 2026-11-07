@@ -7,6 +7,9 @@ extern "C" {
 
 #include "global_palette.h"
 #define sprites_palette_offset 0
+#include "block.h"
+#include "bones.h"
+#include "cactus.h"
 #include "caine_0.h"
 #include "caine_1.h"
 #include "caine_h.h"
@@ -76,10 +79,13 @@ extern "C" {
 #include "pickup_key.h"
 #include "pickup_silver.h"
 #include "pickup_soul.h"
+#include "pit.h"
+#include "poop.h"
 #include "pooter_0.h"
 #include "pooter_1.h"
 #include "pooter_c.h"
 #include "rock.h"
+#include "rock2.h"
 #include "spike.h"
 #include "tear.h"
 #include "trapdoor.h"

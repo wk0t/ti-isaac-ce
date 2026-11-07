@@ -1,5 +1,11 @@
 global_palette.h
 global_palette.c
+block.h
+block.c
+bones.h
+bones.c
+cactus.h
+cactus.c
 caine_0.h
 caine_0.c
 caine_1.h
@@ -138,6 +144,10 @@ pickup_silver.h
 pickup_silver.c
 pickup_soul.h
 pickup_soul.c
+pit.h
+pit.c
+poop.h
+poop.c
 pooter_0.h
 pooter_0.c
 pooter_1.h
@@ -146,6 +156,8 @@ pooter_c.h
 pooter_c.c
 rock.h
 rock.c
+rock2.h
+rock2.c
 spike.h
 spike.c
 tear.h

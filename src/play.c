@@ -201,6 +201,23 @@ static const Obst *obst_at(const Game *g, uint8_t tx, uint8_t ty)
     return 0;
 }
 
+/* variante modifiable : destruction poop/bones par les larmes */
+static Obst *obst_at_rw(Game *g, uint8_t tx, uint8_t ty)
+{
+    RoomState *r = cur_room(g);
+    uint8_t i;
+    for (i = 0; i < r->n_obst; i++)
+        if (r->obst[i].tx == tx && r->obst[i].ty == ty) return &r->obst[i];
+    return 0;
+}
+
+/* fosses et pics : la larme passe au-dessus sans dommage */
+static uint8_t tear_passes(const Game *g, const Tear *t)
+{
+    const Obst *o = obst_at(g, (uint8_t)(t->x >> 5), (uint8_t)(t->y >> 5));
+    return o && (o->type == OB_PIT || o->type == OB_SPIKE);
+}
+
 /* Solide pour une salle quelconque (expose aussi pour les self-tests). */
 uint8_t play_diag_solid(const Game *g, uint8_t room, uint8_t tx, uint8_t ty)
 {
@@ -209,7 +226,9 @@ uint8_t play_diag_solid(const Game *g, uint8_t room, uint8_t tx, uint8_t ty)
     for (i = 0; i < r->n_obst; i++)
         if (r->obst[i].tx == tx && r->obst[i].ty == ty) {
             uint8_t t = r->obst[i].type;
-            return t == OB_ROCK || t == OB_FIRE || t == OB_STOCK;
+            return t == OB_ROCK || t == OB_ROCK2 || t == OB_FIRE
+                || t == OB_STOCK || t == OB_PIT || t == OB_BLOCK
+                || t == OB_POOP || t == OB_CACTUS || t == OB_BONES;
         }
     return 0;
 }
@@ -724,8 +743,16 @@ static void explode(Game *g, Isaac *iz, int16_t cx, int16_t cy)
         int16_t ddx = (int16_t)(ox - cx), ddy = (int16_t)(oy - cy);
         if (ddx < 0) ddx = -ddx;
         if (ddy < 0) ddy = -ddy;
-        if (ddx < 60 && ddy < 60 && (o->type == OB_ROCK || o->type == OB_FIRE))
+        if (ddx < 60 && ddy < 60
+            && (o->type == OB_ROCK || o->type == OB_ROCK2
+                || o->type == OB_POOP || o->type == OB_FIRE
+                || o->type == OB_CACTUS || o->type == OB_BONES)) {
+            if (o->type == OB_ROCK2 && rng_range(4) == 0)
+                room_give_pick(r, PK_COIN, o->tx, o->ty);
+            else if (o->type == OB_POOP && rng_range(8) == 0)
+                room_give_pick(r, PK_COIN, o->tx, o->ty);
             o->type = OB_NONE;
+        }
     }
     {
         int16_t ddx = (int16_t)(iz->x - cx), ddy = (int16_t)(iz->y - cy);
@@ -942,7 +969,20 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         if (t->x < 4 || t->x > ROOM_W * 2 - 4 ||
             t->y < 4 || t->y > ROOM_H * 2 - 4 || !t->ttl) {
             t->ttl = 0; /* morte */
+        } else if (tear_passes(g, t)) {
+            /* au-dessus d'une fosse ou de pics : la larme traverse */
         } else if (solid_at(g, (uint8_t)(t->x >> 5), (uint8_t)(t->y >> 5))) {
+            Obst *vo = obst_at_rw(g, (uint8_t)(t->x >> 5),
+                                 (uint8_t)(t->y >> 5));
+            if (vo && vo->type == OB_POOP) {
+                vo->type = OB_NONE;
+                burst(t->x, t->y, 8, COL_FLOOR2_DK);
+                if (rng_range(8) == 0)
+                    room_give_pick(cur_room(g), PK_COIN, vo->tx, vo->ty);
+            } else if (vo && vo->type == OB_BONES) {
+                vo->type = OB_NONE;
+                burst(t->x, t->y, 8, COL_OFFWHITE);
+            }
             t->ttl = 0;
         } else if (t->hostile) {
             int16_t ddx = (int16_t)(t->x - iz->x), ddy = (int16_t)(t->y - iz->y);
@@ -1455,6 +1495,18 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             }
             hurt_isaac(g, iz, 1);
         }
+
+        /* cactus : piquent au contact rapproche */
+        for (j = 0; j < r->n_obst; j++) {
+            const Obst *oc = &r->obst[j];
+            int16_t ocx = (int16_t)(oc->tx * 32 + 16);
+            int16_t ocy = (int16_t)(oc->ty * 32 + 16);
+            int16_t ddx = (int16_t)(iz->x - ocx), ddy = (int16_t)(iz->y - ocy);
+            if (ddx < 0) ddx = -ddx;
+            if (ddy < 0) ddy = -ddy;
+            if (oc->type == OB_CACTUS && ddx < 34 && ddy < 34)
+                hurt_isaac(g, iz, 1);
+        }
     }
 
     /* --- particules --- */
@@ -1897,11 +1949,20 @@ void play_draw(const Game *g, const Isaac *iz)
         const Obst *o = &r->obst[i];
         uint24_t px = (uint24_t)(ROOM_X + o->tx * 16);
         uint8_t  py = (uint8_t)(ROOM_Y + o->ty * 16);
-        if (o->type == OB_ROCK)  gfx_TransparentSprite_NoClip(rock, px, py);
-        if (o->type == OB_SPIKE) gfx_TransparentSprite_NoClip(spike, px, py);
-        if (o->type == OB_FIRE)
-            gfx_TransparentSprite_NoClip(((bobt >> 3) & 1) ? fire_1 : fire_0, px, py);
-        if (o->type == OB_STOCK) {
+        switch (o->type) {
+        case OB_ROCK:   gfx_TransparentSprite_NoClip(rock, px, py); break;
+        case OB_ROCK2:  gfx_TransparentSprite_NoClip(rock2, px, py); break;
+        case OB_SPIKE:  gfx_TransparentSprite_NoClip(spike, px, py); break;
+        case OB_FIRE:
+            gfx_TransparentSprite_NoClip(((bobt >> 3) & 1) ? fire_1 : fire_0,
+                                         px, py);
+            break;
+        case OB_PIT:    gfx_TransparentSprite_NoClip(pit, px, py); break;
+        case OB_BLOCK:  gfx_TransparentSprite_NoClip(block, px, py); break;
+        case OB_POOP:   gfx_TransparentSprite_NoClip(poop, px, py); break;
+        case OB_CACTUS: gfx_TransparentSprite_NoClip(cactus, px, py); break;
+        case OB_BONES:  gfx_TransparentSprite_NoClip(bones, px, py); break;
+        case OB_STOCK: {
             /* machine a dons : caisse, fente et bac a pieces */
             gfx_SetColor(COL_WOOD);
             gfx_FillRectangle((uint24_t)(px + 2), (uint8_t)(py + 1), 12, 14);
@@ -1911,6 +1972,9 @@ void play_draw(const Game *g, const Isaac *iz)
             gfx_FillRectangle((uint24_t)(px + 5), (uint8_t)(py + 6), 6, 2);
             gfx_SetColor(COL_GOLD);
             gfx_FillRectangle((uint24_t)(px + 5), (uint8_t)(py + 11), 6, 2);
+            break;
+        }
+        default: break;   /* OB_NONE : detruit, invisible */
         }
     }
 
