@@ -9,6 +9,7 @@ void save_pack(SaveSlot *s, const Game *g, const Isaac *iz, uint16_t run_time)
 {
     uint8_t n = g->n_rooms;
     s->magic = SAVE_MAGIC;
+    s->save_fver = SAVE_FVER;
     s->run_time = run_time;
     s->kills_run = g->kills;
     s->iz = *iz;
@@ -50,11 +51,17 @@ void save_unpack(Game *g, Isaac *iz, const SaveSlot *s)
 uint8_t save_read(uint8_t idx, SaveSlot *s)
 {
     ti_var_t f;
+    uint16_t n;
     memset(s, 0, sizeof *s);
     if (idx > 2) return 0;
     f = ti_Open(slot_names[idx], "r");
     if (!f) return 0;
-    if (ti_Read(s, sizeof(SaveSlot), 1, f) != 1) {
+    /* lit au plus la taille reelle de l'AppVar : une sauvegarde d'une
+       version plus ancienne (plus courte) ou future (plus longue) reste
+       lisible par prefixe */
+    n = ti_GetSize(f);
+    if (n > sizeof(SaveSlot)) n = (uint16_t)sizeof(SaveSlot);
+    if (ti_Read(s, n, 1, f) != 1) {
         ti_Close(f);
         return 0;
     }

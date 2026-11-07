@@ -4,6 +4,7 @@
 #include "types.h"
 
 #define SAVE_MAGIC  166   /* 0xA6 */
+#define SAVE_FVER   2     /* version du format ; 0 = ante v1.2 */
 #define SGAMEROOMS  13    /* n_rooms <= 13 (garanti par les self-tests) */
 
 typedef struct {
@@ -22,7 +23,14 @@ typedef struct {
     uint16_t dmg_run;
     uint8_t  grid[MAP_H][MAP_W];
     RoomState rooms[SGAMEROOMS];
+    uint8_t  save_fver;    /* SAVE_FVER ; en fin de struct : toute
+                              evolution du format se fait en AJOUT ici */
 } SaveSlot;
+
+/* Compatibilite entre versions : save_read lit la taille reelle de
+   l'AppVar (ancienne version plus courte, ou future plus longue) et
+   accepte le prefixe. Ne jamais reordonner ni retailler les champs
+   existants de SaveSlot. */
 
 /* Remplit la partie "run" du slot (meta unlocked/char_id/in_progress/
    wins_acc/kills_acc geres par l'appelant, non touches par pack). */

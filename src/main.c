@@ -28,7 +28,6 @@ static uint16_t run_sec;         /* chrono de la run en cours */
 static uint8_t frame_tick;
 static uint8_t laz_used;         /* resurrection de Lazare consommee */
 static uint8_t map_page;         /* ST_MAP : 0 = carte, 1 = stats */
-static uint8_t autosave_ct;      /* archivage periodique (1/8 portes) */
 static uint8_t prev_up, prev_dn, prev_ent, prev_yeq, prev_mode;
 static uint8_t prev_lt, prev_rt;
 
@@ -91,13 +90,15 @@ static void print_time(uint16_t sec)
     gfx_PrintUInt(sec % 60, 2);
 }
 
-/* ecrit le slot courant (sv + run en cours) dans son AppVar */
-static void save_sync(uint8_t archive)
+/* ecrit le slot courant (sv + run en cours) dans son AppVar.
+   Toujours archive : une sauvegarde laissee en RAM seule serait perdue
+   par un reset ou pendant le transfert d'une nouvelle version. */
+static void save_sync(void)
 {
     if ((uint16_t)(sv.kills_acc + game.kills) >= 100)
         sv.unlocked |= CHAR_UNLOCK_CAINE;
     save_pack(&sv, &game, &isaac, run_sec);
-    save_write(cur_slot, &sv, archive);
+    save_write(cur_slot, &sv, 1);
 }
 
 /* recharge les infos des 3 slots pour le menu */
@@ -147,9 +148,8 @@ static void run_new(uint8_t ch)
     run_sec = 0;
     frame_tick = 0;
     laz_used = 0;
-    autosave_ct = 0;
     play_start_floor(&game, &isaac);
-    save_sync(1);
+    save_sync();
 }
 
 /* reprise de la run sauvegardee dans sv */
@@ -161,7 +161,6 @@ static void run_continue(void)
     run_sec = sv.run_time;
     frame_tick = 0;
     laz_used = 0;
-    autosave_ct = 0;
     rng_seed(t | 1u);
     play_enter_room(&game, &isaac, -1);
 }
@@ -176,7 +175,7 @@ static void run_finish(uint8_t won)
         if (sv.wins_acc >= 3) sv.unlocked |= CHAR_UNLOCK_LAZARE;
     }
     sv.in_progress = 0;
-    save_sync(1);
+    save_sync();
 }
 
 static void draw_title(void)
@@ -686,14 +685,10 @@ int main(void)
                             gfx_SwapDraw();
                             frame_wait();
                         }
-                        /* sauvegarde de la run ; archive 1 porte sur 8 */
-                        autosave_ct++;
-                        if (autosave_ct >= 8) {
-                            autosave_ct = 0;
-                            save_sync(1);
-                        } else {
-                            save_sync(0);
-                        }
+                        /* sauvegarde archivee a chaque changement de
+                           salle : survit aux resets et aux mises a
+                           jour du programme */
+                        save_sync();
                     }
                 }
             } else if (ev == EV_TELE) {
@@ -719,15 +714,14 @@ int main(void)
                             frame_wait();
                         }
                     }
-                    save_sync(0);
+                    save_sync();
                     break;
                 }
             } else if (ev == EV_NEXT_FLOOR) {
                 if (game.floor < 3) {
                     gen_floor(&game, (uint8_t)(game.floor + 1));
                     play_start_floor(&game, &isaac);
-                    autosave_ct = 0;
-                    save_sync(1);
+                    save_sync();
                 }
             } else if (ev == EV_DEAD) {
                 if (play_char_id == CHAR_LAZARE && !laz_used) {
@@ -792,7 +786,7 @@ int main(void)
         }
 
         if ((st == ST_PLAY || st == ST_MAP) && (kb_Data[6] & kb_Clear)) {
-            save_sync(1);          /* quitte en cours de partie : on sauve */
+            save_sync();          /* quitte en cours de partie : on sauve */
             running = 0;
         } else if (st != ST_TITLE && (kb_Data[6] & kb_Clear)) {
             running = 0;

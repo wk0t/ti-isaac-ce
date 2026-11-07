@@ -32,5 +32,7 @@ dans `tools/sprites_art.py` :
     make          # -> bin/ISAAC.8xp
 
 Transferer `bin/ISAAC.8xp` sur la calculatrice puis lancer ISAAC. Les
-sauvegardes utilisent un appvar geree par le jeu (les mises a jour majeures
-peuvent invalider les anciennes parties).
+sauvegardes (appvars `ISAACSV1..3`) sont archivees en flash a chaque
+sauvegarde : elles survivent aux resets de RAM et aux changements de
+version du programme (v1.0 -> v1.1 -> v1.2 ...). Ne supprimez pas ces
+appvars a la main, c'est la seule chose qui casse une sauvegarde.
