@@ -1,0 +1,143 @@
+palettes:
+  - name: global_palette
+    fixed-entries:
+      - color: {index: 0, r: 255, g: 0, b: 255}  # TRANSP
+      - color: {index: 1, r: 255, g: 255, b: 255}  # WHITE
+      - color: {index: 2, r: 224, g: 224, b: 218}  # OFFWHITE
+      - color: {index: 3, r: 24, g: 20, b: 20}  # BLACK
+      - color: {index: 4, r: 104, g: 96, b: 90}  # GREY
+      - color: {index: 5, r: 250, g: 222, b: 192}  # SKIN
+      - color: {index: 6, r: 224, g: 176, b: 144}  # SKIN_DK
+      - color: {index: 7, r: 210, g: 40, b: 48}  # BLOOD
+      - color: {index: 8, r: 134, g: 18, b: 28}  # BLOOD_DK
+      - color: {index: 9, r: 247, g: 143, b: 151}  # HEART_SHINE
+      - color: {index: 10, r: 170, g: 34, b: 44}  # HEART_DK
+      - color: {index: 11, r: 185, g: 165, b: 133}  # FLOOR
+      - color: {index: 12, r: 163, g: 143, b: 113}  # FLOOR_MID
+      - color: {index: 13, r: 140, g: 120, b: 94}  # FLOOR_DK
+      - color: {index: 14, r: 120, g: 94, b: 68}  # WALL
+      - color: {index: 15, r: 92, g: 70, b: 48}  # WALL_DK
+      - color: {index: 16, r: 64, g: 48, b: 32}  # WALL_DD
+      - color: {index: 17, r: 174, g: 174, b: 170}  # ROCK
+      - color: {index: 18, r: 142, g: 142, b: 138}  # ROCK_MID
+      - color: {index: 19, r: 106, g: 106, b: 102}  # ROCK_DK
+      - color: {index: 20, r: 72, g: 72, b: 70}  # ROCK_DD
+      - color: {index: 21, r: 168, g: 224, b: 255}  # TEAR
+      - color: {index: 22, r: 92, g: 164, b: 220}  # TEAR_DK
+      - color: {index: 23, r: 238, g: 250, b: 255}  # SHINE
+      - color: {index: 24, r: 238, g: 214, b: 206}  # GAPER
+      - color: {index: 25, r: 58, g: 52, b: 48}  # FLYBODY
+      - color: {index: 26, r: 216, g: 216, b: 216}  # FLYWING
+      - color: {index: 27, r: 240, g: 246, b: 250}  # EYEWHT
+      - color: {index: 28, r: 232, g: 150, b: 170}  # MON_PINK
+      - color: {index: 29, r: 180, g: 96, b: 120}  # MON_DEEP
+      - color: {index: 30, r: 128, g: 64, b: 84}  # MON_DK
+      - color: {index: 31, r: 214, g: 76, b: 76}  # MUSH_RED
+      - color: {index: 32, r: 170, g: 48, b: 54}  # MUSH_DK
+      - color: {index: 33, r: 168, g: 122, b: 92}  # FLOOR2
+      - color: {index: 34, r: 144, g: 98, b: 74}  # FLOOR2_MID
+      - color: {index: 35, r: 116, g: 76, b: 56}  # FLOOR2_DK
+      - color: {index: 36, r: 124, g: 86, b: 58}  # WOOD
+      - color: {index: 37, r: 88, g: 60, b: 38}  # WOOD_DK
+      - color: {index: 38, r: 240, g: 196, b: 64}  # GOLD
+      - color: {index: 39, r: 170, g: 120, b: 24}  # GOLD_DK
+      - color: {index: 40, r: 240, g: 120, b: 32}  # FIRE
+      - color: {index: 41, r: 252, g: 196, b: 64}  # FIRE_CORE
+      - color: {index: 42, r: 246, g: 240, b: 236}  # SHELL
+      - color: {index: 43, r: 244, g: 204, b: 140}  # YOLK
+      - color: {index: 44, r: 150, g: 110, b: 80}  # MEAT
+      - color: {index: 45, r: 96, g: 170, b: 104}  # GREEN_DK
+      - color: {index: 46, r: 150, g: 214, b: 120}  # GREEN
+      - color: {index: 47, r: 214, g: 110, b: 110}  # HAM
+      - color: {index: 48, r: 150, g: 58, b: 64}  # HAM_DK
+    images: automatic
+
+converts:
+  - name: sprites
+    palette: global_palette
+    transparent-color-index: 0
+    images:
+      - caine_0.png
+      - caine_1.png
+      - caine_h.png
+      - door_h_closed.png
+      - door_h_lock.png
+      - door_h_open.png
+      - door_v_closed.png
+      - door_v_lock.png
+      - door_v_open.png
+      - eshot.png
+      - fire_0.png
+      - fire_1.png
+      - fly_0.png
+      - fly_1.png
+      - fly_c.png
+      - gaper_0.png
+      - gaper_1.png
+      - gaper_c.png
+      - horf.png
+      - horf_c.png
+      - hud_empty.png
+      - hud_half.png
+      - hud_heart.png
+      - hud_soul.png
+      - hud_soul_half.png
+      - isaac_0.png
+      - isaac_1.png
+      - isaac_h.png
+      - it_blood.png
+      - it_boots.png
+      - it_breakfast.png
+      - it_bullet.png
+      - it_clover.png
+      - it_compass.png
+      - it_demon.png
+      - it_eye.png
+      - it_ghost.png
+      - it_homing.png
+      - it_lunch.png
+      - it_magnet.png
+      - it_mush.png
+      - it_needle.png
+      - it_num1.png
+      - it_onion.png
+      - it_poison.png
+      - it_skull.png
+      - it_spoon.png
+      - it_steak.png
+      - it_wind.png
+      - lazare_0.png
+      - lazare_1.png
+      - lazare_h.png
+      - magda_0.png
+      - magda_1.png
+      - magda_h.png
+      - maman_0.png
+      - mini_bomb.png
+      - mini_coin.png
+      - mini_key.png
+      - monstro_0.png
+      - monstro_1.png
+      - pedestal.png
+      - pickup_bomb.png
+      - pickup_coin.png
+      - pickup_half.png
+      - pickup_heart.png
+      - pickup_key.png
+      - pickup_silver.png
+      - pickup_soul.png
+      - pooter_0.png
+      - pooter_1.png
+      - pooter_c.png
+      - rock.png
+      - spike.png
+      - tear.png
+      - trapdoor.png
+
+outputs:
+  - type: c
+    include-file: gfx.h
+    palettes:
+      - global_palette
+    converts:
+      - sprites
