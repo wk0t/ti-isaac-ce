@@ -3,19 +3,19 @@
 
 #include "types.h"
 
-/* Genere l'etage `floor` (1 ou 2) dans g. */
+/* Generates floor `floor` (1 or 2) into g. */
 void gen_floor(Game *g, uint8_t floor);
 
-/* Index de salle a partir d'une case de la grille (0 = invalide). */
+/* Room index from a grid cell (0 = invalid). */
 uint8_t gen_room_at(const Game *g, uint8_t cx, uint8_t cy);
 
-/* Case voisine (dx:DIR_*) ; 0 si vide. */
+/* Neighbor cell (dir: DIR_*); 0 if empty. */
 uint8_t gen_neighbor(const Game *g, uint8_t cx, uint8_t cy, uint8_t dir);
 
-/* Indices de salle (grid) : retourne idx+1 ; 0 si vide. */
+/* Room indexes (grid): returns idx+1; 0 if empty. */
 uint8_t gen_degree(const Game *g, uint8_t cx, uint8_t cy);
 
-/* Nombre de SALLES atteignables depuis la case (cx,cy) (BFS). */
+/* Number of rooms reachable from cell (cx,cy) (BFS). */
 uint8_t gen_reachable(const Game *g, uint8_t cx, uint8_t cy);
 
 #endif

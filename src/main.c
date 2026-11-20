@@ -16,18 +16,18 @@
 
 enum { ST_TITLE = 0, ST_SAVE, ST_CHAR, ST_PLAY, ST_MAP, ST_OVER, ST_WIN };
 
-extern uint8_t play_char_id;    /* personnage courant (defini dans play.c) */
+extern uint8_t play_char_id;    /* current character (defined in play.c) */
 
 static Game game;
 static Isaac isaac;
-static SaveSlot sv;             /* slot courant (meta + run) */
-static SaveSlot scratchsv;      /* lecture menu / effacement */
+static SaveSlot sv;             /* current slot (meta + run) */
+static SaveSlot scratchsv;      /* menu read / clear */
 static uint8_t cur_slot;         /* 0..2 */
 static uint8_t save_sel, char_sel, confirm_clear;
-static uint16_t run_sec;         /* chrono de la run en cours */
+static uint16_t run_sec;         /* timer of the current run */
 static uint8_t frame_tick;
-static uint8_t laz_used;         /* resurrection de Lazare consommee */
-static uint8_t map_page;         /* ST_MAP : 0 = carte, 1 = stats */
+static uint8_t laz_used;         /* Lazarus resurrection used */
+static uint8_t map_page;         /* ST_MAP: 0 = map, 1 = stats */
 static uint8_t prev_up, prev_dn, prev_ent, prev_yeq, prev_mode;
 static uint8_t prev_lt, prev_rt;
 
@@ -38,11 +38,11 @@ typedef struct {
 static SlotInfo sinfo[3];
 
 static const char *const char_names[4] =
-    { "ISAAC", "MAGDA", "CAINE", "LAZARE" };
+    { "ISAAC", "MAGDA", "CAIN", "LAZARUS" };
 static const char *const char_cond[4] =
-    { "", "GAGNER 1 PARTIE", "100 ENNEMIS (TOTAL)", "GAGNER 3 PARTIES" };
+    { "", "WIN 1 GAME", "100 ENEMIES (TOTAL)", "WIN 3 GAMES" };
 
-/* --- sync 30 FPS : 32768 / 30 = 1092 ticks/frame --- */
+/* --- 30 FPS sync: 32768 / 30 = 1092 ticks/frame --- */
 static void frame_wait(void)
 {
     static clock_t next = 0;
@@ -55,7 +55,7 @@ static void frame_wait(void)
     }
 }
 
-/* cellule grille de la salle courante */
+/* grid cell of the current room */
 static uint8_t cur_cell(const Game *g, uint8_t *cx, uint8_t *cy)
 {
     uint8_t x, y;
@@ -90,9 +90,9 @@ static void print_time(uint16_t sec)
     gfx_PrintUInt(sec % 60, 2);
 }
 
-/* ecrit le slot courant (sv + run en cours) dans son AppVar.
-   Toujours archive : une sauvegarde laissee en RAM seule serait perdue
-   par un reset ou pendant le transfert d'une nouvelle version. */
+/* Writes the current slot (sv + current run) to its AppVar.
+   Always archived: a save left in RAM only would be lost
+   on reset or when transferring a new program version. */
 static void save_sync(void)
 {
     if ((uint16_t)(sv.kills_acc + game.kills) >= 100)
@@ -101,7 +101,7 @@ static void save_sync(void)
     save_write(cur_slot, &sv, 1);
 }
 
-/* recharge les infos des 3 slots pour le menu */
+/* reloads the 3 slots' info for the menu */
 static void refresh_infos(void)
 {
     uint8_t i;
@@ -152,7 +152,7 @@ static void run_new(uint8_t ch)
     save_sync();
 }
 
-/* reprise de la run sauvegardee dans sv */
+/* resumes the run saved in sv */
 static void run_continue(void)
 {
     uint32_t t = (uint32_t)clock();
@@ -165,7 +165,7 @@ static void run_continue(void)
     play_enter_room(&game, &isaac, -1);
 }
 
-/* cloture la run (victoire ou defaite) */
+/* ends the run (win or defeat) */
 static void run_finish(uint8_t won)
 {
     sv.kills_acc = (uint16_t)(sv.kills_acc + game.kills);
@@ -185,24 +185,24 @@ static void draw_title(void)
     gfx_SetTextScale(3, 3);
     gfx_PrintStringXY("MINI ISAAC", 44, 40);
     gfx_SetTextScale(1, 1);
-    gfx_PrintStringXY("3 ETAGES - BOSS FINAL : MAMAN", 68, 76);
+    gfx_PrintStringXY("3 FLOORS - FINAL BOSS: MOM", 68, 76);
     gfx_ScaledTransparentSprite_NoClip((gfx_sprite_t *)isaac_0, 128, 108, 4, 4);
     gfx_SetTextFGColor(COL_BLACK);
-    gfx_PrintStringXY("ENTREE : SAUVEGARDES", 100, 196);
+    gfx_PrintStringXY("ENTER: SAVES", 100, 196);
     gfx_PrintStringXY("[Yequ] : SELFTEST", 112, 210);
-    gfx_PrintStringXY("BOUGE : 4 8 6 2   TIR : 5 OU FLECHES", 78, 222);
-    gfx_PrintStringXY("BOMBE : ALPHA OU +   ITEM ACTIF : STATS", 70, 232);
+    gfx_PrintStringXY("MOVE: 4 8 6 2   FIRE: 5 OR ARROWS", 78, 222);
+    gfx_PrintStringXY("BOMB: ALPHA OR +   ACTIVE ITEM: STATS", 70, 232);
     gfx_SwapDraw();
 }
 
-/* --- menu des 3 sauvegardes --- */
+/* --- menu of the 3 save slots --- */
 static void draw_save_screen(uint8_t sel, uint8_t confirm)
 {
     uint8_t i;
     gfx_FillScreen(COL_BLACK);
     gfx_SetTextFGColor(COL_GOLD);
     gfx_SetTextScale(2, 2);
-    gfx_PrintStringXY("SAUVEGARDES", 85, 6);
+    gfx_PrintStringXY("SAVES", 170, 6);
     gfx_SetTextScale(1, 1);
     for (i = 0; i < 3; i++) {
         int y = 48 + i * 24;
@@ -211,22 +211,22 @@ static void draw_save_screen(uint8_t sel, uint8_t confirm)
         gfx_PrintUInt(i + 1, 1);
         gfx_PrintChar('.');
         if (!sinfo[i].used) {
-            gfx_PrintStringXY("---- VIERGE ----", 74, y + 5);
+            gfx_PrintStringXY("---- EMPTY ----", 74, y + 5);
         } else if (sinfo[i].in_progress) {
             gfx_PrintStringXY(char_names[sinfo[i].char_id % 4], 74, y + 5);
             gfx_PrintStringXY(sinfo[i].floor == 1 ? "B1"
                             : sinfo[i].floor == 2 ? "B2" : "B3", 144, y + 5);
             gfx_SetTextXY(172, y + 5);
             print_time(sinfo[i].run_time);
-            gfx_PrintStringXY("EN COURS", 244, y + 5);
+            gfx_PrintStringXY("IN PROGRESS", 244, y + 5);
         } else {
             gfx_PrintStringXY(char_names[sinfo[i].char_id % 4], 74, y + 5);
             gfx_SetTextXY(144, y + 5);
-            gfx_PrintString("V:");
+            gfx_PrintString("W:");
             gfx_PrintUInt(sinfo[i].wins_acc, 1);
             gfx_PrintString(" K:");
             gfx_PrintUInt(sinfo[i].kills_acc, 3);
-            gfx_PrintStringXY("LIBRE", 254, y + 5);
+            gfx_PrintStringXY("FREE", 254, y + 5);
         }
         if (i == sel) {
             gfx_SetColor(COL_GOLD);
@@ -234,16 +234,16 @@ static void draw_save_screen(uint8_t sel, uint8_t confirm)
         }
     }
     gfx_SetTextFGColor(COL_OFFWHITE);
-    gfx_PrintStringXY("8/2 : CHOISIR   ENTREE : OK", 80, 136);
-    gfx_PrintStringXY("Yequ : EFFACER RUN   MODE : RETOUR", 68, 150);
+    gfx_PrintStringXY("8/2: SELECT   ENTER: OK", 80, 136);
+    gfx_PrintStringXY("Yequ: CLEAR RUN   MODE: BACK", 68, 150);
     if (confirm) {
         gfx_SetTextFGColor(COL_BLOOD);
-        gfx_PrintStringXY("EFFACER LA RUN ?  ENTREE : OUI", 62, 180);
+        gfx_PrintStringXY("CLEAR RUN?  ENTER: YES", 62, 180);
     }
     gfx_SwapDraw();
 }
 
-/* --- menu de personnage : carrousel --- */
+/* --- character menu: carousel --- */
 static void draw_char_screen(uint8_t sel)
 {
     uint8_t hp, sp, dm, pc;
@@ -253,24 +253,24 @@ static void draw_char_screen(uint8_t sel)
     gfx_FillScreen(COL_BLACK);
     gfx_SetTextFGColor(COL_GOLD);
     gfx_SetTextScale(2, 2);
-    gfx_PrintStringXY("PERSONNAGE", 86, 4);
+    gfx_PrintStringXY("CHARACTER", 146, 4);
     gfx_SetTextScale(1, 1);
     gfx_SetTextFGColor(COL_OFFWHITE);
     gfx_SetTextXY(112, 34);
     gfx_PrintString("SLOT ");
     gfx_PrintUInt(cur_slot + 1, 1);
-    gfx_PrintString(" / PERSO ");
+    gfx_PrintString(" / CHAR ");
     gfx_PrintUInt(sel + 1, 1);
     gfx_PrintString("/4");
 
-    /* fleches du carrousel */
+    /* carousel arrows */
     gfx_SetTextScale(3, 3);
     gfx_SetTextFGColor(COL_GOLD);
     gfx_PrintStringXY("<", 36, 88);
     gfx_PrintStringXY(">", 272, 88);
     gfx_SetTextScale(1, 1);
 
-    /* grand portrait reel du personnage, x3 */
+    /* large portrait of the character, x3 */
     {
         const gfx_sprite_t *port = isaac_0;
         if (sel == CHAR_MAGDA)       port = magda_0;
@@ -279,7 +279,7 @@ static void draw_char_screen(uint8_t sel)
         gfx_ScaledTransparentSprite_NoClip((gfx_sprite_t *)port, 136, 56, 3, 3);
     }
 
-    /* nom */
+    /* name */
     gfx_SetTextScale(2, 2);
     gfx_SetTextFGColor(locked ? COL_GREY : COL_GOLD);
     {
@@ -291,8 +291,8 @@ static void draw_char_screen(uint8_t sel)
     char_stats(sel, &hp, &sp, &dm, &pc);
     if (locked) {
         gfx_SetTextFGColor(COL_BLOOD);
-        gfx_PrintStringXY("VERROUILLE",
-            (uint24_t)(160 - gfx_GetStringWidth("VERROUILLE") / 2), 140);
+        gfx_PrintStringXY("LOCKED",
+            (uint24_t)(160 - gfx_GetStringWidth("LOCKED") / 2), 140);
         gfx_SetTextFGColor(COL_OFFWHITE);
         {
             const char *c = char_cond[sel];
@@ -301,14 +301,14 @@ static void draw_char_screen(uint8_t sel)
     } else {
         gfx_SetTextFGColor(COL_OFFWHITE);
         gfx_SetTextXY(117, 140);
-        gfx_PrintString("PV ");
+        gfx_PrintString("HP ");
         gfx_PrintUInt(hp / 2, 1);
-        gfx_PrintString("  VIT ");
+        gfx_PrintString("  SPD ");
         gfx_PrintUInt(sp, 2);
         gfx_PrintString("  DMG ");
         gfx_PrintUInt(dm, 2);
         gfx_SetTextXY(sel == CHAR_LAZARE ? 110 : 136, 156);
-        gfx_PrintString("PIECES ");
+        gfx_PrintString("COINS ");
         gfx_PrintUInt(pc, 2);
         if (sel == CHAR_MAGDA || sel == CHAR_LAZARE) {
             gfx_SetTextFGColor(COL_GOLD);
@@ -317,12 +317,12 @@ static void draw_char_screen(uint8_t sel)
     }
 
     gfx_SetTextFGColor(COL_OFFWHITE);
-    gfx_PrintStringXY("4/6 : CHOISIR   ENTREE : JOUER", 95, 212);
-    gfx_PrintStringXY("MODE : RETOUR", 131, 222);
+    gfx_PrintStringXY("4/6: SELECT   ENTER: PLAY", 95, 212);
+    gfx_PrintStringXY("MODE: BACK", 131, 222);
     gfx_SwapDraw();
 }
 
-/* --- minimap plein ecran --- */
+/* --- full-screen minimap --- */
 static void draw_map(const Game *g, uint16_t sec)
 {
     uint8_t cx, cy;
@@ -332,11 +332,11 @@ static void draw_map(const Game *g, uint16_t sec)
     gfx_SetTextFGColor(COL_OFFWHITE);
     gfx_SetTextScale(2, 2);
     gfx_PrintStringXY(g->floor == 1 ? "BASEMENT I"
-                    : g->floor == 2 ? "BASEMENT II" : "L'ANTRE", 76, 8);
+                    : g->floor == 2 ? "BASEMENT II" : "THE LAIR", 76, 8);
     gfx_SetTextScale(1, 1);
-    gfx_PrintStringXY("[MODE] : STATS   [ENTREE] : REPRENDRE", 42, 32);
+    gfx_PrintStringXY("[MODE]: STATS   [ENTER]: RESUME", 42, 32);
     gfx_SetTextXY(230, 8);
-    gfx_PrintString("TEMPS ");
+    gfx_PrintString("TIME ");
     print_time(sec);
 
     for (cy = 0; cy < MAP_H; cy++) {
@@ -350,8 +350,8 @@ static void draw_map(const Game *g, uint16_t sec)
             if (!id) continue;
             r = &g->rooms[id - 1];
 
-            /* secrete : visible seulement si visitee ou revelee par bombe ;
-               diable : reveal seulement quand le pacte est ouvert */
+            /* secret: only visible once visited or revealed by a bomb;
+               devil: only shown once the deal is unlocked */
             if ((r->flags & 1)
                 || (r->kind == RM_SECRET && (r->flags & SECRET_BIT))
                 || (r->kind == RM_DEVIL && (r->flags & 4))
@@ -364,14 +364,14 @@ static void draw_map(const Game *g, uint16_t sec)
                       (r->kind == RM_START)    ? COL_WHITE  : COL_GREY;
                 gfx_SetColor(col);
                 gfx_FillRectangle(x + 6, y + 6, 12, 8);
-                /* liaisons vers voisins visites */
+                /* links to visited neighbors */
                 if (cx + 1 < MAP_W && (g->grid[cy][cx + 1]) &&
                     (g->rooms[g->grid[cy][cx + 1] - 1].flags & 1))
                     gfx_FillRectangle(x + 18, y + 9, 12, 2);
                 if (cy + 1 < MAP_H && (g->grid[cy + 1][cx]) &&
                     (g->rooms[g->grid[cy + 1][cx] - 1].flags & 1))
                     gfx_FillRectangle(x + 11, y + 14, 2, 12);
-                /* sigle par type de salle */
+                /* glyph by room type */
                 gfx_SetTextScale(1, 1);
                 gfx_SetTextFGColor(COL_BLACK);
                 if (r->kind == RM_BOSS)
@@ -390,7 +390,7 @@ static void draw_map(const Game *g, uint16_t sec)
                     gfx_PrintStringXY("M", x + 9, y + 6);
             } else if (!(r->kind == RM_SECRET && !(r->flags & SECRET_BIT))
                        && !(r->kind == RM_DEVIL && !(r->flags & 4))) {
-                /* apercu brouillard */
+                /* fog-of-war preview */
                 uint8_t near =
                     (cx > 0 && g->grid[cy][cx - 1] &&
                      (g->rooms[g->grid[cy][cx - 1] - 1].flags & 1)) ||
@@ -406,7 +406,7 @@ static void draw_map(const Game *g, uint16_t sec)
                 }
             }
 
-            if (id - 1 == g->cur) {                    /* salle courante */
+            if (id - 1 == g->cur) {                    /* current room */
                 gfx_SetColor(COL_OFFWHITE);
                 gfx_Rectangle(x + 3, y + 3, 18, 14);
             }
@@ -415,27 +415,27 @@ static void draw_map(const Game *g, uint16_t sec)
     gfx_SwapDraw();
 }
 
-/* --- page stats de la map --- */
+/* --- map stats page --- */
 static void draw_stats(const Game *g, const Isaac *iz, uint16_t sec)
 {
     uint8_t i, shown = 0;
     gfx_FillScreen(COL_BLACK);
     gfx_SetTextScale(2, 2);
     gfx_SetTextFGColor(COL_GOLD);
-    gfx_PrintStringXY("STATISTIQUES", 76, 8);
+    gfx_PrintStringXY("STATS", 170, 8);
     gfx_SetTextScale(1, 1);
     gfx_SetTextXY(226, 8);
-    gfx_PrintString("TEMPS ");
+    gfx_PrintString("TIME ");
     print_time(sec);
 
     gfx_SetTextFGColor(COL_OFFWHITE);
     gfx_SetTextXY(30, 44);
-    gfx_PrintString("PV ");
+    gfx_PrintString("HP ");
     gfx_PrintUInt(iz->hp, 3);
     gfx_PrintString("/");
     gfx_PrintUInt(iz->hp_max, 3);
     if (iz->hp_soul) {
-        gfx_PrintString("  AME ");
+        gfx_PrintString("  SOUL ");
         gfx_PrintUInt(iz->hp_soul, 2);
     }
     gfx_PrintStringXY("DMG", 30, 60);
@@ -451,7 +451,7 @@ static void draw_stats(const Game *g, const Isaac *iz, uint16_t sec)
     gfx_SetTextXY(226, 74);
     gfx_PrintUInt(iz->range, 3);
 
-    /* item actif TELE : jauge de charge en kills */
+    /* active TELE item: charge gauge in kills */
     {
         uint8_t ch = play_tele_charge();
         gfx_SetTextXY(30, 92);
@@ -464,15 +464,15 @@ static void draw_stats(const Game *g, const Isaac *iz, uint16_t sec)
         gfx_FillRectangle(150, 90, (uint24_t)(75 * ch / TELE_MAX), 9);
     }
 
-    /* malediction de l'etage */
+    /* floor curse */
     if (g->curse) {
         gfx_SetTextFGColor(COL_BLOOD);
-        gfx_PrintStringXY("MALEDICTION DE L'ETAGE !", 30, 108);
+        gfx_PrintStringXY("FLOOR CURSE!", 30, 108);
     }
 
-    /* objets acquis */
+    /* collected items */
     gfx_SetTextFGColor(COL_GOLD);
-    gfx_PrintStringXY("OBJETS :", 30, 124);
+    gfx_PrintStringXY("ITEMS:", 30, 124);
     for (i = 1; i < 24; i++) {
         if (iz->has_item & (uint32_t)(1UL << i)) {
             if (shown < 10)
@@ -484,7 +484,7 @@ static void draw_stats(const Game *g, const Isaac *iz, uint16_t sec)
     }
     if (!shown) {
         gfx_SetTextFGColor(COL_OFFWHITE);
-        gfx_PrintStringXY("AUCUN POUR L'INSTANT", 30, 136);
+        gfx_PrintStringXY("NONE YET", 30, 136);
     }
     if (shown > 10) {
         gfx_SetTextFGColor(COL_OFFWHITE);
@@ -493,7 +493,7 @@ static void draw_stats(const Game *g, const Isaac *iz, uint16_t sec)
         gfx_PrintUInt((uint8_t)(shown - 10), 2);
     }
     gfx_SetTextFGColor(COL_OFFWHITE);
-    gfx_PrintStringXY("[MODE] : CARTE   [ENTREE] : REPRENDRE", 42, 210);
+    gfx_PrintStringXY("[MODE]: MAP   [ENTER]: RESUME", 42, 210);
     gfx_SwapDraw();
 }
 
@@ -503,17 +503,17 @@ static void draw_end(uint8_t win, uint16_t sec)
     gfx_FillScreen(COL_BLACK);
     gfx_SetTextScale(2, 2);
     gfx_SetTextFGColor(win ? COL_GOLD : COL_BLOOD);
-    gfx_PrintStringXY(win ? "VICTOIRE !" : "VOUS ETES MORT", win ? 92 : 76, 44);
+    gfx_PrintStringXY(win ? "VICTORY!" : "YOU DIED", win ? 98 : 104, 44);
     gfx_SetTextScale(1, 1);
     gfx_SetTextFGColor(COL_OFFWHITE);
-    gfx_PrintStringXY("ENNEMIS VAINCUS : ", 56, 80);
+    gfx_PrintStringXY("ENEMIES BEATEN: ", 56, 80);
     gfx_PrintUInt(game.kills, 3);
-    gfx_PrintStringXY("PIECES : ", 76, 96);
+    gfx_PrintStringXY("COINS: ", 76, 96);
     gfx_PrintUInt(isaac.coins, 3);
-    gfx_PrintStringXY("TEMPS : ", 97, 112);
+    gfx_PrintStringXY("TIME: ", 97, 112);
     print_time(sec);
     gfx_SetTextFGColor(COL_GOLD);
-    gfx_PrintStringXY("OBJETS :", 56, 132);
+    gfx_PrintStringXY("ITEMS:", 56, 132);
     for (i = 1; i < 24; i++) {
         if (isaac.has_item & (uint32_t)(1UL << i)) {
             if (shown < 6) {
@@ -532,14 +532,14 @@ static void draw_end(uint8_t win, uint16_t sec)
     }
     if (win && game.dmg_run == 0) {
         gfx_SetTextFGColor(COL_GOLD);
-        gfx_PrintStringXY("RUN PARFAITE !", 108, 192);
+        gfx_PrintStringXY("PERFECT RUN!", 108, 192);
     }
     if (win) {
         gfx_SetTextFGColor(COL_GOLD);
-        gfx_PrintStringXY("MERCI D'AVOIR JOUE", 99, 210);
+        gfx_PrintStringXY("THANKS FOR PLAYING", 99, 210);
     }
     gfx_SetTextFGColor(COL_OFFWHITE);
-    gfx_PrintStringXY("ENTREE : MENU", 120, 228);
+    gfx_PrintStringXY("ENTER: MENU", 120, 228);
     gfx_SwapDraw();
 }
 
@@ -564,7 +564,7 @@ int main(void)
                 refresh_infos();
                 save_sel = 0;
                 confirm_clear = 0;
-                prev_ent = 1;      /* Enter encore maintenu */
+                prev_ent = 1;      /* Enter still held */
                 draw_save_screen(save_sel, confirm_clear);
                 st = ST_SAVE;
             } else if (kb_Data[1] & kb_Yequ) {
@@ -600,7 +600,7 @@ int main(void)
                     if (sinfo[save_sel].used) save_read(save_sel, &sv);
                     else { memset(&sv, 0, sizeof sv); sv.char_id = CHAR_ISAAC; }
                     char_sel = 0;
-                    prev_ent = 1;  /* Enter encore maintenu */
+                    prev_ent = 1;  /* Enter still held */
                     st = ST_CHAR;
                 }
             }
@@ -633,7 +633,7 @@ int main(void)
             }
             if (mode && !prev_mode) {
                 st = ST_SAVE;
-                prev_mode = 1;   /* encore maintenu */
+                prev_mode = 1;   /* still held */
             }
             prev_up = up; prev_dn = dn; prev_lt = lt; prev_rt = rt;
             prev_ent = ent; prev_mode = mode;
@@ -648,7 +648,7 @@ int main(void)
             static uint8_t prevstat = 0;
             uint8_t st_now = (kb_Data[4] & kb_Stat) != 0;
 
-            /* deplacement : 4 / 8 / 6 / 2 ; tir : fleches ou [5] */
+            /* move: 4 / 8 / 6 / 2 ; shoot: arrows or [5] */
             in.up    = (kb_Data[4] & kb_8) != 0;
             in.down  = (kb_Data[4] & kb_2) != 0;
             in.left  = (kb_Data[3] & kb_4) != 0;
@@ -677,7 +677,7 @@ int main(void)
                         uint8_t wipe;
                         game.cur = (uint8_t)(nb - 1);
                         play_enter_room(&game, &isaac, dir ^ 1);
-                        /* balayage noir pendant le changement de salle */
+                        /* black sweep during the room change */
                         for (wipe = 0; wipe < 3; wipe++) {
                             gfx_FillScreen(COL_BLACK);
                             gfx_SetColor(COL_WALL_DD);
@@ -685,14 +685,13 @@ int main(void)
                             gfx_SwapDraw();
                             frame_wait();
                         }
-                        /* sauvegarde archivee a chaque changement de
-                           salle : survit aux resets et aux mises a
-                           jour du programme */
+                        /* archived save on every room change:
+                           survives resets and program updates */
                         save_sync();
                     }
                 }
             } else if (ev == EV_TELE) {
-                /* item TELE : saut vers une salle deja visitee */
+                /* TELE item: jump to an already visited room */
                 uint8_t tries;
                 for (tries = 0; tries < 40; tries++) {
                     uint8_t idx = (uint8_t)rng_range(game.n_rooms);
@@ -728,7 +727,7 @@ int main(void)
                     laz_used = 1;
                     isaac.hp = 2;
                     isaac.iframe = 120;
-                    play_notify("LAZARE", "IL REVIT !");
+                    play_notify("LAZARUS", "HE LIVES!");
                 } else {
                     run_finish(0);
                     st = ST_OVER;
@@ -738,7 +737,7 @@ int main(void)
                 st = ST_WIN;
             }
 
-            /* chrono : play_update tourne a 30 FPS */
+            /* timer: play_update runs at 30 FPS */
             if (st == ST_PLAY) {
                 frame_tick++;
                 if (frame_tick >= 30) {
@@ -767,7 +766,7 @@ int main(void)
                 prevmode = 0;
             } else if (m_now && !prevmode) {
                 prevmode = 1;
-                map_page = !map_page;      /* MODE : carte <-> stats */
+                map_page = !map_page;      /* MODE: map <-> stats */
                 if (map_page) draw_stats(&game, &isaac, run_sec);
                 else draw_map(&game, run_sec);
             }
@@ -786,7 +785,7 @@ int main(void)
         }
 
         if ((st == ST_PLAY || st == ST_MAP) && (kb_Data[6] & kb_Clear)) {
-            save_sync();          /* quitte en cours de partie : on sauve */
+            save_sync();          /* quitting mid-game: save */
             running = 0;
         } else if (st != ST_TITLE && (kb_Data[6] & kb_Clear)) {
             running = 0;

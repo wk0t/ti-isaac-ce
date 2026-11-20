@@ -4,13 +4,13 @@
 #include "types.h"
 
 typedef struct {
-    uint8_t up, down, left, right;          /* deplacement : 4 / 8 / 6 / 2 */
-    uint8_t f_up, f_down, f_left, f_right;   /* tir directionnel : fleches */
-    uint8_t f_center;                        /* [5] : tir dans la direction visee */
-    uint8_t bomb;       /* alpha ou [+] (front) */
-    uint8_t map;        /* mode (front) */
-    uint8_t quit;       /* clear/del (front) */
-    uint8_t active;     /* [stats] : item actif (front) */
+    uint8_t up, down, left, right;          /* movement: 4 / 8 / 6 / 2 */
+    uint8_t f_up, f_down, f_left, f_right;   /* directional fire: arrows */
+    uint8_t f_center;                        /* [5]: fire in the aimed direction */
+    uint8_t bomb;       /* alpha or [+] (edge) */
+    uint8_t map;        /* mode (edge) */
+    uint8_t quit;       /* clear/del (edge) */
+    uint8_t active;     /* [stats]: active item (edge) */
 } Input;
 
 enum {
@@ -19,7 +19,7 @@ enum {
     EV_NEXT_FLOOR,
     EV_WIN,
     EV_DEAD,
-    EV_TELE            /* item actif : teleportation aleatoire */
+    EV_TELE            /* active item: random teleport */
 };
 
 void    play_reset_isaac(Isaac *iz);
