@@ -6,7 +6,7 @@
 #include <string.h>
 #include "gfx/gfx.h"
 
-/* personnage courant (ISAAC / MAGDA / CAINE / LAZARE), choisi dans main.c */
+/* current character (ISAAC / MAGDA / CAIN / LAZARUS), chosen in main.c */
 uint8_t play_char_id = CHAR_ISAAC;
 
 /* ---------- runtime pools ---------- */
@@ -17,7 +17,7 @@ static uint8_t n_tr;
 static Bomb   bm[MAX_BOMBS];
 static uint8_t n_bm;
 
-/* ---------- particules (juice) ---------- */
+/* ---------- particles (juice) ---------- */
 #define MAX_PARTS 24
 typedef struct {
     int16_t x, y;
@@ -26,22 +26,22 @@ typedef struct {
 } Part;
 static Part    pt[MAX_PARTS];
 static uint8_t n_pt;
-static uint8_t hurtflash;   /* frames de bordure rouge apres degat */
-static uint8_t shake;       /* frames de tremblement d'ecran restantes */
-static uint8_t shx, shy;     /* offsets de rendu du tremblement (>= 0) */
+static uint8_t hurtflash;   /* red border frames after damage */
+static uint8_t shake;       /* remaining screen-shake frames */
+static uint8_t shx, shy;     /* shake render offsets (>= 0) */
 
-/* le rendu de la salle secoue via ROOM_X/ROOM_Y en transparence : offsets
-   uniquement positifs, les sprites NoClip ne tolerent pas de sous-depassement */
+/* the room render shakes via ROOM_X/ROOM_Y in transparency: offsets
+   only positive, NoClip sprites cannot go below zero */
 #undef ROOM_X
 #undef ROOM_Y
 #define ROOM_X (16u + shx)
 #define ROOM_Y (16u + shy)
 
-/* ---------- juice : hit-stop, textes flottants, decals, banniere ---------- */
-static uint8_t hitstop;      /* frames de gel au moment des impacts */
-static uint8_t boss_intro;   /* frames d'ecartitre avant le boss */
+/* ---------- juice: hit-stop, floating texts, decals, banner ---------- */
+static uint8_t hitstop;      /* freeze frames at impact */
+static uint8_t boss_intro;   /* boss intro (title card) frames */
 static const char *boss_name;
-static uint8_t tele_charge;  /* kills accumules vers la recharge TELE */
+static uint8_t tele_charge;  /* kills accumulated toward the TELE recharge */
 
 #define MAX_POPS 3
 typedef struct { int16_t x, y; uint8_t ttl, col; char txt[10]; } Pop;
@@ -95,7 +95,7 @@ static void spawn_decal(int16_t x, int16_t y)
     decals[s].ttl = (uint8_t)(150 + rng_range(240));
 }
 
-/* reset des effets a l'entree d'une salle */
+/* resets effects on room entry */
 static void clear_fx(void)
 {
     uint8_t s;
@@ -106,57 +106,57 @@ static void clear_fx(void)
     hitstop = 0;
 }
 
-/* definie plus bas (utilisee par play_enter_room pour la salle maudite) */
+/* defined below (used by play_enter_room for the cursed room) */
 static void hurt_isaac(Game *g, Isaac *iz, uint8_t dmg);
 static const char *item_name(uint8_t item)
 {
     switch (item) {
-    case IT_ONION:     return "OIGNON";
-    case IT_EYE:       return "OEIL LARGE";
-    case IT_MUSH:      return "CHAMPI";
-    case IT_BREAKFAST: return "PETIT-DEJ";
-    case IT_SPOON:     return "CUILLERE";
-    case IT_BLOOD:     return "SANG";
-    case IT_LUNCH:     return "BENTHO";
-    case IT_NUM1:      return "MYSTERE";
-    case IT_PACTE:     return "PACTE";
-    case IT_PECHE:     return "PECHE";
-    case IT_BOUSSOLE:  return "BOUSSOLE";
-    case IT_AIMANT:    return "AIMANT";
-    case IT_BOTTES:    return "BOTTES";
+    case IT_ONION:     return "SAD ONION";
+    case IT_EYE:       return "INNER EYE";
+    case IT_MUSH:      return "MUSHROOM";
+    case IT_BREAKFAST: return "BREAKFAST";
+    case IT_SPOON:     return "SPOON";
+    case IT_BLOOD:     return "BLOOD";
+    case IT_LUNCH:     return "LUNCH";
+    case IT_NUM1:      return "NUMBER ONE";
+    case IT_PACTE:     return "PACT";
+    case IT_PECHE:     return "SIN";
+    case IT_BOUSSOLE:  return "COMPASS";
+    case IT_AIMANT:    return "MAGNET";
+    case IT_BOTTES:    return "BOOTS";
     case IT_STEAK:     return "STEAK";
-    case IT_CRANE:     return "CRANE";
-    case IT_AIGUILLE:  return "AIGUILLE";
-    case IT_SPECTRE:   return "SPECTRE";
-    case IT_TELEGUIDE: return "TELEGUIDE";
-    case IT_MASSE:     return "MASSE";
-    case IT_SOUFFLE:   return "SOUFFLE";
-    case IT_DEMON:     return "COEUR DEMO";
-    case IT_VENIN:     return "VENIN";
-    case IT_TREFLE:    return "TREFLE";
+    case IT_CRANE:     return "SKULL";
+    case IT_AIGUILLE:  return "NEEDLE";
+    case IT_SPECTRE:   return "SPIRIT";
+    case IT_TELEGUIDE: return "TELE";
+    case IT_MASSE:     return "HAMMER";
+    case IT_SOUFFLE:   return "BLAST";
+    case IT_DEMON:     return "DEMON HEART";
+    case IT_VENIN:     return "POISON";
+    case IT_TREFLE:    return "CLOVER";
     default:           return "???";
     }
 }
 
-/* nom public (ecran de fin) */
+/* public name (end screen) */
 const char *play_item_name(uint8_t item)
 {
     return item_name(item);
 }
 
-/* banniere public (main.c : resurrection de Lazare, etc.) */
+/* public banner (main.c: Lazarus resurrection, etc.) */
 void play_notify(const char *txt, const char *desc)
 {
     spawn_banner(txt, desc);
 }
 
-/* charge de l'item actif TELE (0..TELE_MAX kills) */
+/* active TELE item charge (0..TELE_MAX kills) */
 uint8_t play_tele_charge(void)
 {
     return tele_charge;
 }
 
-/* effet de l'item, en anglais, affiche au ramassage */
+/* item effect, in English, shown on pickup */
 static const char *item_desc(uint8_t item)
 {
     switch (item) {
@@ -187,7 +187,7 @@ static const char *item_desc(uint8_t item)
     }
 }
 
-/* ---------- petits helpers ---------- */
+/* ---------- small helpers ---------- */
 
 static RoomState *cur_room(Game *g) { return &g->rooms[g->cur]; }
 static const RoomState *cur_room_c(const Game *g) { return &g->rooms[g->cur]; }
@@ -201,7 +201,7 @@ static const Obst *obst_at(const Game *g, uint8_t tx, uint8_t ty)
     return 0;
 }
 
-/* variante modifiable : destruction poop/bones par les larmes */
+/* writable variant: poop/bones destruction by tears */
 static Obst *obst_at_rw(Game *g, uint8_t tx, uint8_t ty)
 {
     RoomState *r = cur_room(g);
@@ -211,14 +211,14 @@ static Obst *obst_at_rw(Game *g, uint8_t tx, uint8_t ty)
     return 0;
 }
 
-/* fosses et pics : la larme passe au-dessus sans dommage */
+/* pits and spikes: the tear flies over without damage */
 static uint8_t tear_passes(const Game *g, const Tear *t)
 {
     const Obst *o = obst_at(g, (uint8_t)(t->x >> 5), (uint8_t)(t->y >> 5));
     return o && (o->type == OB_PIT || o->type == OB_SPIKE);
 }
 
-/* Solide pour une salle quelconque (expose aussi pour les self-tests). */
+/* Solid for any room (also exposed for the self-tests). */
 uint8_t play_diag_solid(const Game *g, uint8_t room, uint8_t tx, uint8_t ty)
 {
     const RoomState *r = &g->rooms[room];
@@ -238,7 +238,7 @@ static uint8_t solid_at(const Game *g, uint8_t tx, uint8_t ty)
     return play_diag_solid(g, g->cur, tx, ty);
 }
 
-/* Boite en demi-px (centre + demi-taille) : collision obstacle solide ? */
+/* Box in half-px (center + half-size): solid obstacle collision? */
 static uint8_t box_blocked(const Game *g, int16_t x, int16_t y, int16_t half)
 {
     int16_t xmin = x - half, xmax = x + half;
@@ -265,9 +265,8 @@ static int16_t move_axis(const Game *g, int16_t pos, int16_t other,
     return np;
 }
 
-/* case voisine occupee (grid) pour savoir si une porte existe ;
-   la porte vers une salle secrete est cachee tant qu'elle n'est pas
-   revelee par une bombe. */
+/* occupied neighbor cell (grid) to know if a door exists;
+   the door to a secret room stays hidden until revealed by a bomb. */
 static uint8_t has_door(const Game *g, uint8_t dir)
 {
     uint8_t cx, cy;
@@ -287,7 +286,7 @@ static uint8_t has_door(const Game *g, uint8_t dir)
     return 0;
 }
 
-/* porte verrouillee (trone) : consomme une cle, sinon bloque */
+/* locked door (treasure room): consumes a key, otherwise blocks */
 static uint8_t open_locked(Game *g, Isaac *iz, uint8_t dir)
 {
     uint8_t cx, cy;
@@ -308,7 +307,7 @@ static uint8_t open_locked(Game *g, Isaac *iz, uint8_t dir)
     return 0;
 }
 
-/* ---------- entree / sortie de salle ---------- */
+/* ---------- room entry / exit ---------- */
 
 void play_reset_isaac(Isaac *iz)
 {
@@ -330,9 +329,9 @@ void play_start_floor(Game *g, Isaac *iz)
     tele_charge = 0;
     play_enter_room(g, iz, -1);
     if (g->curse & CURSE_DARKNESS)
-        spawn_banner("MALEDICTION", "OBSCURITE...");
+        spawn_banner("CURSE", "DARKNESS...");
     else if (g->curse & CURSE_HASTE)
-        spawn_banner("MALEDICTION", "HATE !");
+        spawn_banner("CURSE", "HASTE!");
 }
 
 void play_enter_room(Game *g, Isaac *iz, int8_t from_dir)
@@ -341,10 +340,10 @@ void play_enter_room(Game *g, Isaac *iz, int8_t from_dir)
     uint8_t i;
 
     n_en = 0; n_tr = 0; n_bm = 0; clear_fx(); shake = 0;
-    r->flags |= 1; /* visitee */
+    r->flags |= 1; /* visited */
 
     switch (from_dir) {
-    case DIR_N: /* entre par la porte du haut */
+    case DIR_N: /* enters through the top door */
         iz->x = 304; iz->y = 24; iz->aim = DIR_S; break;
     case DIR_S:
         iz->x = 304; iz->y = (int16_t)(ROOM_H * 2 - 24); iz->aim = DIR_N; break;
@@ -360,26 +359,26 @@ void play_enter_room(Game *g, Isaac *iz, int8_t from_dir)
 
     if (r->kind == RM_BOSS && !(r->flags & 2)) {
         if (g->floor == 3) {
-            /* boss final : MAMAN, au fond de L'ANTRE */
+            /* final boss: MOM, at the back of THE LAIR */
             en[0].kind = EN_MAMAN;
             en[0].hp = 1000;
             en[0].x = (int16_t)(ROOM_W);
             en[0].y = (int16_t)(ROOM_H - 20);
             en[0].flash = 0; en[0].t = 0; en[0].st = 0;
             en[0].dx = 0; en[0].dy = 0; en[0].shoot_cd = 70;
-            en[0].champ = 0; en[0].poison = 0;
+            en[0].champion = 0; en[0].poison = 0;
             en[0].kx = 0; en[0].ky = 0;
             n_en = 1;
-            boss_name = "MAMAN";
+            boss_name = "MOM";
         } else if (g->floor == 2 && rng_range(2) == 0) {
-            /* boss alternatif : les jumeaux */
+            /* alternate boss: the twins */
             en[0].kind = EN_GEMINI;
             en[0].hp = 320;
             en[0].x = (int16_t)(ROOM_W - 60);
             en[0].y = (int16_t)(ROOM_H - 40);
             en[0].flash = 0; en[0].t = 0; en[0].st = 0;
             en[0].dx = 4; en[0].dy = 4; en[0].shoot_cd = 40;
-            en[0].champ = 0; en[0].poison = 0;
+            en[0].champion = 0; en[0].poison = 0;
             en[0].kx = 0; en[0].ky = 0;
             en[1].kind = EN_GEMINI;
             en[1].hp = 320;
@@ -387,10 +386,10 @@ void play_enter_room(Game *g, Isaac *iz, int8_t from_dir)
             en[1].y = (int16_t)(ROOM_H - 40);
             en[1].flash = 0; en[1].t = 16; en[1].st = 0;
             en[1].dx = 4; en[1].dy = 4; en[1].shoot_cd = 80;
-            en[1].champ = 0; en[1].poison = 0;
+            en[1].champion = 0; en[1].poison = 0;
             en[1].kx = 0; en[1].ky = 0;
             n_en = 2;
-            boss_name = "LES JUMEAUX";
+            boss_name = "THE TWINS";
         } else {
             en[0].kind = EN_MONSTRO;
             en[0].hp = (uint16_t)((g->floor == 2) ? 800 : 500);
@@ -398,7 +397,7 @@ void play_enter_room(Game *g, Isaac *iz, int8_t from_dir)
             en[0].y = (int16_t)(ROOM_H - 40);
             en[0].flash = 0; en[0].t = 0; en[0].st = 0;
             en[0].dx = 0; en[0].dy = 0; en[0].shoot_cd = 60;
-            en[0].champ = 0; en[0].poison = 0;
+            en[0].champion = 0; en[0].poison = 0;
             en[0].kx = 0; en[0].ky = 0;
             n_en = 1;
             boss_name = "MONSTRO";
@@ -487,11 +486,11 @@ void play_enter_room(Game *g, Isaac *iz, int8_t from_dir)
             en[n_en].st = 0;
             en[n_en].poison = 0;
             en[n_en].kx = 0; en[n_en].ky = 0;
-            /* champion : robuste, rapide, butin garanti */
-            en[n_en].champ = 0;
+            /* champion: tough, fast, guaranteed loot */
+            en[n_en].champion = 0;
             if (rng_range(100) < ((g->floor == 1) ? 5
                                   : (g->floor == 2) ? 10 : 18)) {
-                en[n_en].champ = 1;
+                en[n_en].champion = 1;
                 en[n_en].hp = (uint16_t)(en[n_en].hp * 3 / 2);
                 if (en[n_en].dx > 0) en[n_en].dx++;
                 else if (en[n_en].dx < 0) en[n_en].dx--;
@@ -503,7 +502,7 @@ void play_enter_room(Game *g, Isaac *iz, int8_t from_dir)
     }
 
     if (r->kind == RM_MAUDITE && !(r->flags & 2)) {
-        /* garde maudite : la porte mord en entrant */
+        /* cursed room guard: the door bites on entry */
         uint8_t count = (uint8_t)(3 + rng_range(2));
         for (i = 0; i < count && n_en < MAX_ENEMIES; i++) {
             uint8_t kind = (rng_range(2)) ? EN_SPIDER : EN_FLY;
@@ -519,7 +518,7 @@ void play_enter_room(Game *g, Isaac *iz, int8_t from_dir)
             }
             en[n_en].flash = 0; en[n_en].t = (uint8_t)rng_range(32);
             en[n_en].st = 0; en[n_en].shoot_cd = 0;
-            en[n_en].champ = 0; en[n_en].poison = 0;
+            en[n_en].champion = 0; en[n_en].poison = 0;
             en[n_en].kx = 0; en[n_en].ky = 0;
             n_en++;
         }
@@ -593,9 +592,9 @@ void play_apply_item(Isaac *iz, uint8_t item)
     if (iz->hp > iz->hp_max) iz->hp = iz->hp_max;
 }
 
-/* ---------- butin / coffres ---------- */
+/* ---------- loot / chests ---------- */
 
-/* place un pickup dans un slot libre de la salle (silencieux si plein) */
+/* places a pickup in a free room slot (silent if full) */
 static void room_give_pick(RoomState *r, uint8_t type, uint8_t tx, uint8_t ty)
 {
     uint8_t k, slot = 0xFF;
@@ -611,7 +610,7 @@ static void room_give_pick(RoomState *r, uint8_t type, uint8_t tx, uint8_t ty)
     r->pick[slot].y = (int16_t)(ty * 2 * TILE + TILE);
 }
 
-/* ouvre un coffre : disperse le butin autour de la tuile */
+/* opens a chest: scatters the loot around the tile */
 static void drop_loot(Game *g, RoomState *r, uint8_t tx, uint8_t ty,
                       uint8_t locked)
 {
@@ -636,13 +635,13 @@ static void drop_loot(Game *g, RoomState *r, uint8_t tx, uint8_t ty,
         else if (roll < 82) type = PK_SILVER;
         else                type = PK_HEART;
         if (locked && i == 0) type = PK_SILVER;
-        /* coffre verrouille : petit espoir d'un coeur d'ame */
+        /* locked chest: small chance of a soul heart */
         if (locked && rng_range(5) == 0) type = PK_SOUL;
         room_give_pick(r, type, ox, oy);
     }
 }
 
-/* ---------- larmes ---------- */
+/* ---------- tears ---------- */
 
 static void spawn_tear(Game *g, Isaac *iz, int8_t dx, int8_t dy)
 {
@@ -673,7 +672,7 @@ static void spawn_eshot(int16_t x, int16_t y, int8_t dx, int8_t dy,
     }
 }
 
-/* vecteur normalise +/-1 vers une cible (8 dirs) */
+/* normalized +/-1 vector toward a target (8 dirs) */
 static void aim8(int16_t fx, int16_t fy, int16_t tx, int16_t ty,
                  int8_t *dx, int8_t *dy)
 {
@@ -684,14 +683,14 @@ static void aim8(int16_t fx, int16_t fy, int16_t tx, int16_t ty,
     else { *dx = adx > 0 ? 1 : -1; *dy = ady > 0 ? 1 : -1; }
 }
 
-/* ---------- degats issac ---------- */
+/* ---------- Isaac damage ---------- */
 
-/* degats + knockback (kdx/kdy : poussée en demi-px ; 0 = pas de poussée) */
+/* damage + knockback (kdx/kdy: knockback in half-px; 0 = none) */
 static void hurt_isaac_k(Game *g, Isaac *iz, uint8_t dmg, int8_t kdx, int8_t kdy)
 {
     uint8_t total = dmg;
     if (iz->iframe) return;
-    /* les coeurs d'ame encaissent avant les coeurs rouges */
+    /* soul hearts absorb before red hearts */
     if (iz->hp_soul) {
         uint8_t take = (dmg < iz->hp_soul) ? dmg : iz->hp_soul;
         iz->hp_soul = (uint8_t)(iz->hp_soul - take);
@@ -765,7 +764,7 @@ static void explode(Game *g, Isaac *iz, int16_t cx, int16_t cy)
         }
     }
 
-    /* bombe proche d'un mur adjacent a une salle secrete : revelation */
+    /* bomb near a wall adjacent to a secret room: reveal */
     {
         uint8_t gx, gy;
         for (gy = 0; gy < MAP_H; gy++)
@@ -785,13 +784,13 @@ static void explode(Game *g, Isaac *iz, int16_t cx, int16_t cy)
                             (d == DIR_E && cx > ROOM_W * 2 - 90))
                             rn->flags |= SECRET_BIT;
                     }
-                    gy = MAP_H; /* sortir des boucles */
+                    gy = MAP_H; /* break out of the loops */
                     break;
                 }
     }
 }
 
-/* ---------- update principal ---------- */
+/* ---------- main update ---------- */
 
 uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
 {
@@ -813,13 +812,13 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
     if (iz->iframe) iz->iframe--;
     if (iz->fire_cd) iz->fire_cd--;
 
-    /* --- direction visee --- */
+    /* --- aimed direction --- */
     if (in->up)    iz->aim = DIR_N;
     if (in->down)  iz->aim = DIR_S;
     if (in->left)  iz->aim = DIR_W;
     if (in->right) iz->aim = DIR_E;
 
-    /* --- deplacement --- */
+    /* --- movement --- */
     {
         int16_t mx = 0, my = 0, d;
 
@@ -831,8 +830,8 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         if (mx || my) iz->anim++;
         else iz->anim = 0;
         {
-            /* accumulateurs en 1/8 de demi-px : mouvement fin,
-               diagonale ralentie (x0.75) au lieu d'un frame saute sur 4 */
+            /* accumulators in 1/8 half-px: fine movement,
+               slowed diagonal (x0.75) instead of a 1-in-4 frame skip */
             int16_t rate = (mx && my) ? (int16_t)(sp * 3 / 2)
                                       : (int16_t)(sp * 2);
             if (mx) {
@@ -853,7 +852,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             }
         }
 
-        /* bords : combat = bloque, sinon sortie par la porte */
+        /* edges: combat = blocked, otherwise exit through the door */
         if (combat) {
             if (iz->x < 10) iz->x = 10;
             if (iz->x > ROOM_W * 2 - 10) iz->x = (int16_t)(ROOM_W * 2 - 10);
@@ -863,7 +862,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             uint8_t in_ns = (uint8_t)(iz->x > 264 && iz->x < 344);
             uint8_t in_we = (uint8_t)(iz->y > 200 && iz->y < 280);
 
-            /* nord */
+            /* north */
             if (iz->y < 10 && in_ns && has_door(g, DIR_N)) {
                 if (iz->y < 4) {
                     if (open_locked(g, iz, DIR_N)) { *dir = DIR_N; return EV_TRANSIT; }
@@ -872,7 +871,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             } else if (iz->y < 10) {
                 iz->y = 10;
             }
-            /* sud */
+            /* south */
             if (iz->y > ROOM_H * 2 - 10 && in_ns && has_door(g, DIR_S)) {
                 if (iz->y > ROOM_H * 2 - 4) {
                     if (open_locked(g, iz, DIR_S)) { *dir = DIR_S; return EV_TRANSIT; }
@@ -881,7 +880,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             } else if (iz->y > ROOM_H * 2 - 10) {
                 iz->y = (int16_t)(ROOM_H * 2 - 10);
             }
-            /* ouest */
+            /* west */
             if (iz->x < 10 && in_we && has_door(g, DIR_W)) {
                 if (iz->x < 4) {
                     if (open_locked(g, iz, DIR_W)) { *dir = DIR_W; return EV_TRANSIT; }
@@ -890,7 +889,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             } else if (iz->x < 10) {
                 iz->x = 10;
             }
-            /* est */
+            /* east */
             if (iz->x > ROOM_W * 2 - 10 && in_we && has_door(g, DIR_E)) {
                 if (iz->x > ROOM_W * 2 - 4) {
                     if (open_locked(g, iz, DIR_E)) { *dir = DIR_E; return EV_TRANSIT; }
@@ -902,7 +901,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         }
     }
 
-    /* --- tir : vise et tire avec 8 / 2 / 4 / 6 --- */
+    /* --- shooting: aim and fire with 8 / 2 / 4 / 6 --- */
     {
         int8_t fdx = 0, fdy = 0;
 
@@ -911,7 +910,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         else if (in->f_left)  { fdx = -1; iz->aim = DIR_W; }
         else if (in->f_right) { fdx = 1;  iz->aim = DIR_E; }
 
-        /* [5] : tir dans la direction du dernier deplacement */
+        /* [5]: fire in the last movement direction */
         if (!fdx && !fdy && in->f_center) {
             switch (iz->aim) {
             case DIR_S: fdy = 1;  break;
@@ -936,13 +935,13 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         }
     }
 
-    /* --- objet actif : TELE (touche STAT) --- */
+    /* --- active item: TELE (STAT key) --- */
     if (in->active && tele_charge >= TELE_MAX) {
         tele_charge = 0;
         return EV_TELE;
     }
 
-    /* --- bombe posee --- */
+    /* --- bomb placed --- */
     if (in->bomb && iz->bombs > 0 && n_bm < MAX_BOMBS) {
         bm[n_bm].x = iz->x; bm[n_bm].y = iz->y; bm[n_bm].fuse = 45;
         n_bm++;
@@ -960,7 +959,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         i++;
     }
 
-    /* --- larmes --- */
+    /* --- tears --- */
     for (i = 0; i < n_tr; ) {
         Tear *t = &tr[i];
         t->x = (int16_t)(t->x + t->dx);
@@ -968,9 +967,9 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         if (t->ttl) t->ttl--;
         if (t->x < 4 || t->x > ROOM_W * 2 - 4 ||
             t->y < 4 || t->y > ROOM_H * 2 - 4 || !t->ttl) {
-            t->ttl = 0; /* morte */
+            t->ttl = 0; /* dead */
         } else if (tear_passes(g, t)) {
-            /* au-dessus d'une fosse ou de pics : la larme traverse */
+            /* over a pit or spikes: the tear passes through */
         } else if (solid_at(g, (uint8_t)(t->x >> 5), (uint8_t)(t->y >> 5))) {
             Obst *vo = obst_at_rw(g, (uint8_t)(t->x >> 5),
                                  (uint8_t)(t->y >> 5));
@@ -1014,7 +1013,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                     if (en[j].kind != EN_MONSTRO && en[j].kind != EN_GEMINI
                         && en[j].kind != EN_MAMAN
                         && (en[j].x > 40 || en[j].y > 40)) {
-                        /* knockback : sauf sur les bords de salle { */
+                        /* knockback: except at the room edges { */
                         uint8_t kb = (iz->has_item & (1UL << IT_SOUFFLE))
                                    ? 12 : 6;
                         if (t->dx > 0)      en[j].kx = (int8_t)(en[j].kx + kb);
@@ -1027,7 +1026,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                         if (en[j].ky < -14) en[j].ky = -14;
                     }
                     if (iz->has_item & (1UL << IT_AIGUILLE))
-                        t->hitcd = 8;   /* tir perceant : la larme survit */
+                        t->hitcd = 8;   /* piercing shot: the tear survives */
                     else
                         t->ttl = 0;
                     break;
@@ -1043,19 +1042,19 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         i++;
     }
 
-    /* --- ennemis --- */
+    /* --- enemies --- */
     for (i = 0; i < n_en; ) {
         Enemy *e = &en[i];
         if (e->flash) e->flash--;
         e->t++;
 
-        /* poison (VENIN) : degats reguliers */
+        /* poison (VENIN): regular damage */
         if (e->poison) {
             e->poison--;
             if ((e->poison % 30) == 0 && e->hp > 1)
                 e->hp = (uint16_t)(e->hp - 1);
         }
-        /* knockback recu : glisse puis s'arrete */
+        /* knockback taken: slides then stops */
         if (e->kx || e->ky) {
             e->x = move_axis(g, e->x, e->y, 10, e->kx);
             e->y = move_axis(g, e->y, e->x, 10, e->ky);
@@ -1132,7 +1131,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                     e->dy = (int8_t)((iz->y - e->y) / 20);
                 }
                 break;
-            case 2: /* saut */
+            case 2: /* jump */
                 e->x = (int16_t)(e->x + e->dx);
                 e->y = (int16_t)(e->y + e->dy);
                 if (e->x < 40)  { e->x = 40;  e->dx = 0; }
@@ -1149,7 +1148,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                 }
                 if (e->t >= 26) {
                     if (e->hp < 250 && g->floor == 1) {
-                        /* salve radiale sous 50% (floor 1: hp<250) */
+                        /* radial burst below 50% (floor 1: hp<250) */
                         uint8_t k;
                         int8_t vx[8] = {1,1,1,0,-1,-1,-1,0};
                         int8_t vy[8] = {-1,0,1,1,1,0,-1,-1};
@@ -1172,7 +1171,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             }
             break;
         case EN_CHARGER:
-            /* charge dans la direction dominante puis se recale */
+            /* charges in the dominant direction then realigns */
             if (e->st == 0) {
                 if (e->t >= 40) {
                     int16_t ddx = (int16_t)(iz->x - e->x);
@@ -1190,7 +1189,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             }
             break;
         case EN_SPIDER:
-            /* avances saccadees dans une direction aleatoire */
+            /* jerky advances in a random direction */
             if ((e->t & 7) == 0) {
                 e->dx = (int8_t)(rng_range(5) - 2);
                 e->dy = (int8_t)(rng_range(5) - 2);
@@ -1240,8 +1239,8 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             break;
         }
         case EN_SAUTEUR:
-            /* attend, vibre, puis bondit sur Isaac en passant au-dessus
-               des obstacles */
+            /* waits, vibrates, then leaps at Isaac, passing over
+               obstacles */
             if (e->st == 0) {
                 if (e->shoot_cd) e->shoot_cd--;
                 else { e->st = 1; e->t = 0; }
@@ -1272,7 +1271,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             }
             break;
         case EN_CROIX:
-            /* statue fixe : salves alternant croix droite et diagonales */
+            /* fixed statue: bursts alternating straight cross and diagonals */
             if (e->shoot_cd) e->shoot_cd--;
             else {
                 if (e->st & 1) {
@@ -1291,7 +1290,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             }
             break;
         case EN_MAMAN:
-            /* boss final : charge, double salve radiale, invocation */
+            /* final boss: charge, double radial burst, summon */
             switch (e->st) {
             case 0:
                 if (e->shoot_cd) e->shoot_cd--;
@@ -1354,7 +1353,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                         en[n_en].flash = 0; en[n_en].t = 0; en[n_en].st = 0;
                         en[n_en].dx = 4; en[n_en].dy = 0;
                         en[n_en].shoot_cd = 0;
-                        en[n_en].champ = 0; en[n_en].poison = 0;
+                        en[n_en].champion = 0; en[n_en].poison = 0;
                         en[n_en].kx = 0; en[n_en].ky = 0;
                         n_en++;
                     }
@@ -1370,7 +1369,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             break;
         }
 
-        /* MALEDICTION HATE : les ennemis pressent le pas */
+        /* HASTE curse: enemies quicken their pace */
         if (g->curse & CURSE_HASTE) {
             if (e->shoot_cd) e->shoot_cd--;
             if (e->kind == EN_GAPER && (e->t & 3) == 3) {
@@ -1407,7 +1406,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             }
         }
 
-        /* mort */
+        /* death */
         if (e->hp == 0) {
             uint8_t bigboss = (uint8_t)((e->kind == EN_MONSTRO
                                          || e->kind == EN_GEMINI
@@ -1421,13 +1420,13 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                 burst(e->x, e->y, 16, COL_BLOOD);
             else
                 burst(e->x, e->y, 6, COL_BLOOD);
-            if (e->champ) burst(e->x, e->y, 8, COL_GOLD);
+            if (e->champion) burst(e->x, e->y, 8, COL_GOLD);
             /* drop */
             {
                 RoomState *rr = cur_room(g);
                 uint8_t roll = rng_range(100);
                 uint8_t type = PK_NONE;
-                /* TREFLE : la chance decale la table de butin */
+                /* CLOVER: luck shifts the loot table */
                 if ((iz->has_item & (1UL << IT_TREFLE)) && roll >= 12)
                     roll = (uint8_t)(roll - 12);
                 if (roll < 20) type = PK_COIN;
@@ -1437,18 +1436,18 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                 else if (roll < 46) type = PK_HEART;
                 else if (roll < 50) type = PK_SILVER;
                 else if (roll < 53) type = PK_SOUL;
-                if (e->champ && type == PK_NONE) type = PK_COIN;
+                if (e->champion && type == PK_NONE) type = PK_COIN;
                 if (type != PK_NONE)
                     room_give_pick(rr, type, (uint8_t)(e->x >> 5),
                                    (uint8_t)(e->y >> 5));
                 if (e->kind == EN_MONSTRO || e->kind == EN_GEMINI) {
-                    /* butin de boss garanti */
+                    /* guaranteed boss loot */
                     room_give_pick(rr, PK_HEART, 8, 7);
                     room_give_pick(rr, PK_COIN, 7, 6);
                     room_give_pick(rr, PK_COIN, 9, 6);
                     if (rng_range(100) < 30)
                         room_give_pick(rr, PK_SILVER, 8, 5);
-                    /* pacte du diable debloque si l'etage est sans degats */
+                    /* devil deal unlocked if the floor is damage-free */
                     {
                         uint8_t k2;
                         for (k2 = 0; k2 < g->n_rooms; k2++) {
@@ -1458,7 +1457,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                                      && rng_range(100) < 60)
                                     || rng_range(100) < 15) {
                                     g->rooms[k2].flags |= 4;
-                                    spawn_pop(iz->x, iz->y - 24, "DIABLE!",
+                                    spawn_pop(iz->x, iz->y - 24, "DEVIL!",
                                               COL_BLOOD);
                                     hitstop = 8;
                                 }
@@ -1473,11 +1472,11 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             continue;
         }
         i++;
-    }    /* --- spikes / feux --- */
+    }    /* --- spikes / fires --- */
     {
         const Obst *o = obst_at(g, (uint8_t)(iz->x >> 5), (uint8_t)(iz->y >> 5));
         if (o && o->type == OB_SPIKE) {
-            /* salle de sacrifice : le pic central donne un reward */
+            /* sacrifice room: the central spike gives a reward */
             if (r->kind == RM_SACRI && o->tx == 8 && o->ty == 6
                 && !iz->iframe) {
                 uint8_t rew;
@@ -1489,14 +1488,14 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                 else                    rew = PK_SILVER;
                 room_give_pick(r, rew, 8, 7);
                 spawn_pop(o->tx * 32 + 16, o->ty * 32 - 8,
-                          (rew == PK_CHEST) ? "COFFRE!" : "OFFRANDE",
+                          (rew == PK_CHEST) ? "CHEST!" : "OFFERING",
                           COL_GOLD);
                 spawn_decal(o->tx * 32 + 16, o->ty * 32 + 16);
             }
             hurt_isaac(g, iz, 1);
         }
 
-        /* cactus : piquent au contact rapproche */
+        /* cactus: stings on close contact */
         for (j = 0; j < r->n_obst; j++) {
             const Obst *oc = &r->obst[j];
             int16_t ocx = (int16_t)(oc->tx * 32 + 16);
@@ -1509,7 +1508,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         }
     }
 
-    /* --- particules --- */
+    /* --- particles --- */
     for (i = 0; i < n_pt; ) {
         pt[i].x = (int16_t)(pt[i].x + pt[i].dx);
         pt[i].y = (int16_t)(pt[i].y + pt[i].dy);
@@ -1522,7 +1521,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         i++;
     }
 
-    /* --- machine a dons (boutique) --- */
+    /* --- donation machine (shop) --- */
     if (r->kind == RM_SHOP) {
         static uint8_t don_cd;
         if (don_cd) don_cd--;
@@ -1549,7 +1548,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                                          : PK_SILVER;
                             room_give_pick(r, type, r->obst[j].tx,
                                            (uint8_t)(r->obst[j].ty - 1));
-                            spawn_pop(mx, my - 32, "MERCI !", COL_OFFWHITE);
+                            spawn_pop(mx, my - 32, "THANKS!", COL_OFFWHITE);
                         }
                         if (r->count == 10) {
                             room_give_pick(r, PK_CHEST, r->obst[j].tx,
@@ -1563,14 +1562,14 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         }
     }
 
-    /* --- pickups (gratuits ou en vente en boutique) --- */
+    /* --- pickups (free or for sale in the shop) --- */
     if (r->n_pick) {
         for (i = 0; i < r->n_pick; i++) {
             Pickup *p = &r->pick[i];
             int16_t ddx, ddy;
             uint8_t ok;
             if (!p->type || p->type == PK_TRAP) continue;
-            /* aimant : le butin glisse vers Isaac */
+            /* magnet: loot slides toward Isaac */
             if (!p->price && p->type != PK_CHEST && p->type != PK_LOCKED
                 && (iz->has_item & (1UL << IT_AIMANT))) {
                 int16_t mx2 = (int16_t)(iz->x - p->x);
@@ -1586,14 +1585,14 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
             if (ddx < 0) ddx = -ddx;
             if (ddy < 0) ddy = -ddy;
             if (ddx >= 20 || ddy >= 20) continue;
-            /* coffres : ouverture au contact (verrouille = cle requise) */
+            /* chests: open on contact (locked = key required) */
             if (p->type == PK_CHEST || p->type == PK_LOCKED) {
                 if (p->type == PK_LOCKED) {
                     if (!iz->keys) continue;
                     iz->keys--;
                     drop_loot(g, r, p->tx, p->ty, 1);
                 } else if (rng_range(100) < 20 && n_en + 2 <= MAX_ENEMIES) {
-                    /* coffre piege : deux mouches ! */
+                    /* trap chest: two flies! */
                     uint8_t k;
                     for (k = 0; k < 2; k++) {
                         en[n_en].kind = EN_FLY;
@@ -1605,7 +1604,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                         en[n_en].shoot_cd = 0;
                         n_en++;
                     }
-                    spawn_pop(p->x, p->y - 24, "PIEGE !", COL_BLOOD);
+                    spawn_pop(p->x, p->y - 24, "TRAP!", COL_BLOOD);
                 } else {
                     drop_loot(g, r, p->tx, p->ty, 0);
                 }
@@ -1613,7 +1612,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                 p->type = PK_NONE;
                 continue;
             }
-            /* pacte du diable : paye en demi-coeurs */
+            /* devil deal: paid in half-hearts */
             if (p->type == PK_DEVIL) {
                 if (iz->hp > p->price) {
                     uint8_t it = (p->tx <= 8) ? IT_PACTE : IT_PECHE;
@@ -1640,7 +1639,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                 switch (p->type) {
                 case PK_HEART:
                     if (iz->hp + 2 <= iz->hp_max) iz->hp += 2; else iz->hp = iz->hp_max;
-                    spawn_pop(p->x, p->y - 16, "+PV", COL_BLOOD);
+                    spawn_pop(p->x, p->y - 16, "+HP", COL_BLOOD);
                     break;
                 case PK_HALF:
                     iz->hp++;
@@ -1653,11 +1652,11 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                     break;
                 case PK_KEY:
                     if (iz->keys < 9) iz->keys++;
-                    spawn_pop(p->x, p->y - 16, "+CLE", COL_OFFWHITE);
+                    spawn_pop(p->x, p->y - 16, "+KEY", COL_OFFWHITE);
                     break;
                 case PK_BOMB:
                     if (iz->bombs < 9) iz->bombs++;
-                    spawn_pop(p->x, p->y - 16, "+BOMBE", COL_OFFWHITE);
+                    spawn_pop(p->x, p->y - 16, "+BOMB", COL_OFFWHITE);
                     break;
                 case PK_SILVER:
                     iz->coins = (iz->coins > 94) ? 99 :
@@ -1667,7 +1666,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
                 case PK_SOUL:
                     iz->hp_soul = (uint8_t)(iz->hp_soul + 2);
                     if (iz->hp_soul > 8) iz->hp_soul = 8;
-                    spawn_pop(p->x, p->y - 16, "+AME", COL_TEAR);
+                    spawn_pop(p->x, p->y - 16, "+SOUL", COL_TEAR);
                     break;
                 default: break;
                 }
@@ -1676,7 +1675,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         }
     }
 
-    /* --- item sur pedestal (trone gratuit / boutique payante) --- */
+    /* --- pedestal item (free treasure / paid shop) --- */
     if ((r->kind == RM_TREASURE || r->kind == RM_SHOP) && !(r->flags & 8)) {
         int16_t dx = (int16_t)(iz->x - (8 * 32 + 16));
         int16_t dy = (int16_t)(iz->y - (6 * 32 + 16));
@@ -1694,7 +1693,7 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         }
     }
 
-    /* --- trappe vers etage suivant --- */
+    /* --- trapdoor to the next floor --- */
     {
         for (i = 0; i < r->n_pick; i++) {
             if (r->pick[i].type == PK_TRAP) {
@@ -1707,28 +1706,28 @@ uint8_t play_update(Game *g, Isaac *iz, const Input *in, uint8_t *dir)
         }
     }
 
-    /* --- salle nettoyee --- */
+    /* --- cleared room --- */
     if (combat && n_en == 0) {
         r->flags |= 2;
-        /* celebration : eclat dore + LIBRE ! */
+        /* celebration: golden burst + CLEAR! */
         burst(iz->x, iz->y - 20, 10, COL_GOLD);
-        spawn_pop(iz->x, iz->y - 28, "LIBRE !", COL_GOLD);
+        spawn_pop(iz->x, iz->y - 28, "CLEAR!", COL_GOLD);
         shake = 3;
-        /* trone du boss vaincu : trappe vers l'etage suivant */
+        /* defeated boss treasure room: trapdoor to the next floor */
         if (r->kind == RM_BOSS && g->floor < 3)
             room_give_pick(r, PK_TRAP, 8, 6);
     }
 
-    /* --- MAMAN vaincue : victoire --- */
+    /* --- MOM defeated: victory --- */
     if (r->kind == RM_BOSS && n_en == 0 && g->floor == 3) return EV_WIN;
 
-    /* --- mort --- */
+    /* --- death --- */
     if (iz->hp == 0) return EV_DEAD;
 
     return EV_NONE;
 }
 
-/* ---------- rendu ---------- */
+/* ---------- rendering ---------- */
 
 static void draw_floor_walls(const Game *g)
 {
@@ -1740,7 +1739,7 @@ static void draw_floor_walls(const Game *g)
     uint8_t dark = (g->floor == 1) ? COL_FLOOR_DK
                   : (g->floor == 2) ? COL_FLOOR2_DK : COL_WALL_DD;
 
-    /* murs */
+    /* walls */
     gfx_SetColor(COL_WALL);
     gfx_FillRectangle(0, 0, 320, 16);
     gfx_FillRectangle(0, 224, 320, 16);
@@ -1752,11 +1751,11 @@ static void draw_floor_walls(const Game *g)
     gfx_FillRectangle(12, 16, 4, 208);
     gfx_FillRectangle(304, 16, 4, 208);
 
-    /* sol */
+    /* floor */
     gfx_SetColor(base);
     gfx_FillRectangle(ROOM_X, ROOM_Y, ROOM_W, ROOM_H);
 
-    /* taches deterministes par tuile */
+    /* deterministic stains per tile */
     for (ty = 0; ty < ROOM_H_TILES; ty++)
         for (tx = 0; tx < ROOM_W_TILES; tx++) {
             uint8_t h = (uint8_t)(tx * 7 + ty * 13 + g->cur * 29);
@@ -1769,7 +1768,7 @@ static void draw_floor_walls(const Game *g)
                 gfx_FillRectangle((uint24_t)(ROOM_X + tx * 16 + 10),
                                   (uint8_t)(ROOM_Y + ty * 16 + 11), 2, 2);
             } else if ((h & 15) == 12 && g->floor == 2) {
-                /* planches de bois trainantes (etage 2) */
+                /* trailing wooden planks (floor 2) */
                 gfx_SetColor(COL_WOOD_DK);
                 gfx_FillRectangle((uint24_t)(ROOM_X + tx * 16 + 3),
                                   (uint8_t)(ROOM_Y + ty * 16 + 7), 10, 2);
@@ -1777,7 +1776,7 @@ static void draw_floor_walls(const Game *g)
                 gfx_FillRectangle((uint24_t)(ROOM_X + tx * 16 + 4),
                                   (uint8_t)(ROOM_Y + ty * 16 + 7), 8, 1);
             } else if ((h & 15) == 11 && g->floor == 3) {
-                /* cranes de L'ANTRE */
+                /* THE LAIR skulls */
                 gfx_SetColor(COL_OFFWHITE);
                 gfx_FillRectangle((uint24_t)(ROOM_X + tx * 16 + 5),
                                   (uint8_t)(ROOM_Y + ty * 16 + 6), 6, 5);
@@ -1789,7 +1788,7 @@ static void draw_floor_walls(const Game *g)
                 gfx_FillRectangle((uint24_t)(ROOM_X + tx * 16 + 9),
                                   (uint8_t)(ROOM_Y + ty * 16 + 7), 2, 2);
             } else if ((h & 15) == 6 && g->floor == 3) {
-                /* petits trous noirs du sol */
+                /* small black holes in the floor */
                 gfx_SetColor(dark);
                 gfx_FillRectangle((uint24_t)(ROOM_X + tx * 16 + 5),
                                   (uint8_t)(ROOM_Y + ty * 16 + 7), 8, 3);
@@ -1799,9 +1798,9 @@ static void draw_floor_walls(const Game *g)
             }
         }
 
-    /* accentes par type de salle */
+    /* accents by room type */
     if (g->rooms[g->cur].kind == RM_DEVIL) {
-        /* sol noir + grande croix de sang */
+        /* black floor + big blood cross */
         gfx_SetColor(COL_BLACK);
         gfx_FillRectangle(ROOM_X, ROOM_Y, ROOM_W, ROOM_H);
         gfx_SetColor(COL_BLOOD_DK);
@@ -1811,14 +1810,14 @@ static void draw_floor_walls(const Game *g)
         gfx_FillRectangle(154, 32, 12, 176);
         gfx_FillRectangle(72, 114, 176, 12);
     } else if (g->rooms[g->cur].kind == RM_SACRI) {
-        /* cadre dore autour du pic central */
+        /* golden frame around the central spike */
         gfx_SetColor(COL_GOLD_DK);
         gfx_Rectangle(120, 98, 64, 44);
         gfx_SetColor(COL_GOLD);
         gfx_HorizLine(120, 98, 64);
         gfx_HorizLine(120, 141, 64);
     } else if (g->rooms[g->cur].kind == RM_MAUDITE) {
-        /* grandes croix de sang sur le sol */
+        /* big blood crosses on the floor */
         gfx_SetColor(COL_BLOOD_DK);
         gfx_FillRectangle(138, 32, 44, 192);
         gfx_FillRectangle(64, 106, 192, 44);
@@ -1851,7 +1850,7 @@ static void draw_doors(const Game *g, uint8_t combat)
                     else if (combat) s = (d == DIR_W || d == DIR_E) ? door_v_closed : door_h_closed;
                     else s = (d == DIR_W || d == DIR_E) ? door_v_open : door_h_open;
                     gfx_TransparentSprite_NoClip(s, (uint24_t)px, (uint8_t)py);
-                    /* bande de couleur selon la salle voisine */
+                    /* color band according to the neighboring room */
                     {
                         uint8_t band = 0;
                         switch (rn->kind) {
@@ -1880,20 +1879,20 @@ static void draw_doors(const Game *g, uint8_t combat)
                         }
                     }
                     if (rn->kind == RM_MAUDITE) {
-                        /* porte qui mord : marque de sang au pied */
+                        /* biting door: blood mark at its foot */
                         gfx_SetColor(COL_BLOOD);
                         gfx_FillRectangle((uint24_t)(px + 4),
                             (uint8_t)(py + (d == DIR_S ? 0 : 12)), 8, 4);
                     }
-                    cy = MAP_H; break; /* sortir des boucles */
+                    cy = MAP_H; break; /* break out of the loops */
                 }
     }
 }
 
-/* direction de sortie -> porte verrouillee : gere la cle dans play_update? 
-   Non : cle geree dans play_transit (main). */
+/* exit direction -> locked door: is the key handled in play_update?
+   No: the key is handled in play_transit (main). */
 
-/* ombre portee grossiere au sol sous une entite */
+/* rough drop shadow on the ground under an entity */
 static void draw_shadow(uint8_t col, uint24_t px, uint8_t py, uint8_t wd)
 {
     gfx_SetColor(col);
@@ -1935,11 +1934,11 @@ void play_draw(const Game *g, const Isaac *iz)
     const RoomState *r = cur_room_c(g);
     uint8_t i;
     uint8_t combat = (n_en > 0);
-    static uint8_t bobt;              /* tick d'animation global */
+    static uint8_t bobt;              /* global animation tick */
     uint8_t bob;
 
     bobt++;
-    bob = (uint8_t)((bobt >> 4) & 1);  /* flottement des pickups (+/-1 px) */
+    bob = (uint8_t)((bobt >> 4) & 1);  /* pickup bobbing (+/-1 px) */
 
     draw_floor_walls(g);
     draw_doors(g, combat);
@@ -1963,7 +1962,7 @@ void play_draw(const Game *g, const Isaac *iz)
         case OB_CACTUS: gfx_TransparentSprite_NoClip(cactus, px, py); break;
         case OB_BONES:  gfx_TransparentSprite_NoClip(bones, px, py); break;
         case OB_STOCK: {
-            /* machine a dons : caisse, fente et bac a pieces */
+            /* donation machine: case, slot and coin tray */
             gfx_SetColor(COL_WOOD);
             gfx_FillRectangle((uint24_t)(px + 2), (uint8_t)(py + 1), 12, 14);
             gfx_SetColor(COL_WOOD_DK);
@@ -1974,11 +1973,11 @@ void play_draw(const Game *g, const Isaac *iz)
             gfx_FillRectangle((uint24_t)(px + 5), (uint8_t)(py + 11), 6, 2);
             break;
         }
-        default: break;   /* OB_NONE : detruit, invisible */
+        default: break;   /* OB_NONE: destroyed, invisible */
         }
     }
 
-    /* decals de sang persistants */
+    /* persistent blood decals */
     for (i = 0; i < MAX_DECALS; i++) {
         uint24_t px, py;
         if (!decals[i].ttl) continue;
@@ -1992,7 +1991,7 @@ void play_draw(const Game *g, const Isaac *iz)
         gfx_FillRectangle((uint24_t)(px - 1), (uint8_t)(py - 2), 2, 2);
     }
 
-    /* pedestal (trone / boutique) */
+    /* pedestal (treasure / shop) */
     if (r->kind == RM_TREASURE || r->kind == RM_SHOP) {
         gfx_TransparentSprite_NoClip(pedestal, ROOM_X + 128, ROOM_Y + 96);
         if (!(r->flags & 8)) {
@@ -2022,7 +2021,7 @@ void play_draw(const Game *g, const Isaac *iz)
             uint24_t txp = (uint24_t)(ROOM_X + p->tx * 16);
             uint8_t  typ = (uint8_t)(ROOM_Y + p->ty * 16);
             gfx_TransparentSprite_NoClip(trapdoor, txp, typ);
-            /* halo clignotant pour attirer l'oeil */
+            /* blinking halo to catch the eye */
             if ((bobt >> 4) & 1) {
                 gfx_SetColor(COL_GOLD_DK);
                 gfx_Rectangle((uint24_t)(txp - 1), (uint8_t)(typ - 1), 18, 18);
@@ -2058,7 +2057,7 @@ void play_draw(const Game *g, const Isaac *iz)
             break;
         }
         case PK_DEVIL: {
-            /* pacte : socle noir + objet + prix en coeurs */
+            /* deal: black base + item + price in hearts */
             uint8_t it = (p->tx <= 8) ? IT_PACTE : IT_PECHE;
             gfx_SetColor(COL_WALL_DK);
             gfx_FillRectangle((uint24_t)(pxs - 2), (uint8_t)(py + 4), 20, 4);
@@ -2073,7 +2072,7 @@ void play_draw(const Game *g, const Isaac *iz)
         }
         default: break;
         }
-        /* etiquette de prix en boutique */
+        /* price tag in the shop */
         if (r->kind == RM_SHOP && p->price) {
             gfx_SetTextScale(1, 1);
             gfx_SetTextFGColor(COL_GOLD);
@@ -2082,7 +2081,7 @@ void play_draw(const Game *g, const Isaac *iz)
         }
     }
 
-    /* ennemis : ombre portee puis sprite ; champions en rouge */
+    /* enemies: drop shadow then sprite; champions in red */
     {
         uint8_t shadow_col = (g->floor == 1) ? COL_FLOOR_DK
                           : (g->floor == 2) ? COL_FLOOR2_DK : COL_WALL_DD;
@@ -2091,8 +2090,8 @@ void play_draw(const Game *g, const Isaac *iz)
             uint24_t px = (uint24_t)(ROOM_X + (e->x >> 1));
             uint8_t  py = (uint8_t)(ROOM_Y + (e->y >> 1));
             uint8_t f = (e->t >> 3) & 1;
-            if (e->flash && (e->t & 1)) continue; /* clignote quand touche */
-            /* ombre : volants projetes plus loin, MAMAN collee au mur */
+            if (e->flash && (e->t & 1)) continue; /* blinks when hit */
+            /* shadow: flying ones thrown further, MOM stuck to the wall */
             if (e->kind != EN_MAMAN) {
                 uint8_t wd = (e->kind == EN_MONSTRO) ? 12
                            : (e->kind == EN_GEMINI || e->kind == EN_CROIX) ? 7 : 5;
@@ -2102,16 +2101,16 @@ void play_draw(const Game *g, const Isaac *iz)
             }
             switch (e->kind) {
             case EN_GAPER: gfx_TransparentSprite_NoClip(
-                               e->champ ? gaper_c : (f ? gaper_1 : gaper_0),
+                               e->champion ? gaper_c : (f ? gaper_1 : gaper_0),
                                (uint24_t)(px - 8), (uint8_t)(py - 8)); break;
             case EN_FLY:   gfx_TransparentSprite_NoClip(
-                               e->champ ? fly_c : (f ? fly_1 : fly_0),
+                               e->champion ? fly_c : (f ? fly_1 : fly_0),
                                (uint24_t)(px - 8), (uint8_t)(py - 8)); break;
             case EN_POOTER:gfx_TransparentSprite_NoClip(
-                               e->champ ? pooter_c : (f ? pooter_1 : pooter_0),
+                               e->champion ? pooter_c : (f ? pooter_1 : pooter_0),
                                (uint24_t)(px - 8), (uint8_t)(py - 8)); break;
             case EN_HORF:  gfx_TransparentSprite_NoClip(
-                               e->champ ? horf_c : horf,
+                               e->champion ? horf_c : horf,
                                (uint24_t)(px - 8), (uint8_t)(py - 8)); break;
             case EN_MONSTRO:
                 if (e->st == 1)
@@ -2124,19 +2123,19 @@ void play_draw(const Game *g, const Isaac *iz)
                 break;
             case EN_CHARGER:
                 gfx_TransparentSprite_NoClip(
-                    e->champ ? gaper_c : (f ? gaper_1 : gaper_0),
+                    e->champion ? gaper_c : (f ? gaper_1 : gaper_0),
                     (uint24_t)(px - 8), (uint8_t)(py - 8));
                 gfx_SetColor(e->st ? COL_BLOOD : COL_BLOOD_DK);
                 gfx_FillRectangle((uint24_t)(px - 4), (uint8_t)(py - 3), 3, 2);
                 gfx_FillRectangle((uint24_t)(px + 2), (uint8_t)(py - 3), 3, 2);
                 break;
             case EN_SPIDER:
-                gfx_SetColor(e->champ ? COL_BLOOD : COL_BLACK);
+                gfx_SetColor(e->champion ? COL_BLOOD : COL_BLACK);
                 gfx_FillRectangle((uint24_t)(px - 7), (uint8_t)(py - 1), 3, 2);
                 gfx_FillRectangle((uint24_t)(px + 5), (uint8_t)(py - 1), 3, 2);
                 gfx_FillRectangle((uint24_t)(px - 6), (uint8_t)(py + 4), 3, 2);
                 gfx_FillRectangle((uint24_t)(px + 4), (uint8_t)(py + 4), 3, 2);
-                gfx_TransparentSprite_NoClip(e->champ ? fly_c : (f ? fly_1 : fly_0),
+                gfx_TransparentSprite_NoClip(e->champion ? fly_c : (f ? fly_1 : fly_0),
                     (uint24_t)(px - 4), (uint8_t)(py - 4));
                 break;
             case EN_GEMINI:
@@ -2148,25 +2147,25 @@ void play_draw(const Game *g, const Isaac *iz)
                 gfx_FillRectangle((uint24_t)(px + 2), (uint8_t)(py - 2), 2, 2);
                 break;
             case EN_SAUTEUR:
-                /* gaper bondissant : marque de jambes, decolle au bond */
+                /* leaping gaper: leg mark, lifts off on the jump */
                 gfx_TransparentSprite_NoClip(
-                    e->champ ? gaper_c : (f ? gaper_1 : gaper_0),
+                    e->champion ? gaper_c : (f ? gaper_1 : gaper_0),
                     (uint24_t)(px - 8),
                     (uint8_t)(py - 8 - (e->st == 2 ? 6 : 0)));
                 gfx_SetColor((e->st == 1) ? COL_BLOOD : COL_BLOOD_DK);
                 gfx_FillRectangle((uint24_t)(px - 5), (uint8_t)(py + 5), 10, 2);
                 break;
             case EN_CROIX:
-                /* statue cracheur : croix marquee au-dessus */
+                /* spitting statue: cross marked above */
                 gfx_TransparentSprite_NoClip(
-                    e->champ ? horf_c : horf,
+                    e->champion ? horf_c : horf,
                     (uint24_t)(px - 8), (uint8_t)(py - 8));
                 gfx_SetColor((e->st & 1) ? COL_BLOOD : COL_BLOOD_DK);
                 gfx_FillRectangle((uint24_t)(px - 1), (uint8_t)(py - 13), 2, 7);
                 gfx_FillRectangle((uint24_t)(px - 3), (uint8_t)(py - 11), 6, 2);
                 break;
             case EN_MAMAN:
-                /* MAMAN : grande face rose, ecrasee au telegraph */
+                /* MOM: big pink face, squashed at telegraph */
                 if (e->st == 1)
                     gfx_ScaledTransparentSprite_NoClip(maman_0,
                         (uint24_t)(px - 24 + (e->t & 1)), (uint8_t)(py - 8), 3, 1);
@@ -2179,7 +2178,7 @@ void play_draw(const Game *g, const Isaac *iz)
         }
     }
 
-    /* larmes */
+    /* tears */
     for (i = 0; i < n_tr; i++) {
         uint24_t px = (uint24_t)(ROOM_X + (tr[i].x >> 1));
         uint8_t  py = (uint8_t)(ROOM_Y + (tr[i].y >> 1));
@@ -2191,7 +2190,7 @@ void play_draw(const Game *g, const Isaac *iz)
                                           (uint24_t)(px - 4), (uint8_t)(py - 4));
     }
 
-    /* bombes */
+    /* bombs */
     for (i = 0; i < n_bm; i++) {
         if ((bm[i].fuse & 3) < 2) continue;
         gfx_TransparentSprite_NoClip(pickup_bomb,
@@ -2199,7 +2198,7 @@ void play_draw(const Game *g, const Isaac *iz)
             (uint8_t)(ROOM_Y + (bm[i].y >> 1) - 8));
     }
 
-    /* isaac : sprite reel du personnage, ombre, clignement des yeux */
+    /* isaac: real character sprite, shadow, eye blink */
     {
         uint8_t blink = (uint8_t)(iz->iframe && ((iz->iframe >> 1) & 1));
         if (!blink) {
@@ -2225,7 +2224,7 @@ void play_draw(const Game *g, const Isaac *iz)
                 break;
             }
             gfx_TransparentSprite_NoClip(s, (uint24_t)(sx - 8), (uint8_t)(sy - 8));
-            /* clignement periodique des yeux */
+            /* periodic eye blink */
             if ((bobt & 127) < 6) {
                 gfx_SetColor(COL_SKIN);
                 gfx_FillRectangle((uint24_t)(sx - 3), (uint8_t)(sy - 3), 2, 2);
@@ -2234,14 +2233,14 @@ void play_draw(const Game *g, const Isaac *iz)
         }
     }
 
-    /* particules */
+    /* particles */
     for (i = 0; i < n_pt; i++) {
         gfx_SetColor(pt[i].col);
         gfx_FillRectangle((uint24_t)(ROOM_X + (pt[i].x >> 1) - 1),
                           (uint8_t)(ROOM_Y + (pt[i].y >> 1) - 1), 2, 2);
     }
 
-    /* petits textes flottants */
+    /* small floating texts */
     gfx_SetTextScale(1, 1);
     for (i = 0; i < MAX_POPS; i++) {
         if (!pops[i].ttl) continue;
@@ -2253,7 +2252,7 @@ void play_draw(const Game *g, const Isaac *iz)
             (uint8_t)(ROOM_Y + (pops[i].y >> 1) - 10));
     }
 
-    /* bandeau nom d'objet ramasse */
+    /* banner with the collected item name */
     if (banner_ttl) {
         banner_ttl--;
         if (banner_ttl > 8) {
@@ -2273,7 +2272,7 @@ void play_draw(const Game *g, const Isaac *iz)
         }
     }
 
-    /* ecran d'intro du boss */
+    /* boss intro screen */
     if (boss_intro > 6) {
         uint24_t w;
         gfx_SetColor(COL_BLACK);
@@ -2287,10 +2286,10 @@ void play_draw(const Game *g, const Isaac *iz)
         gfx_PrintStringXY(boss_name, (uint24_t)(160 - (w >> 1)), 110);
         gfx_SetTextScale(1, 1);
         gfx_SetTextFGColor(COL_GREY);
-        gfx_PrintStringXY("PREPARE-TOI...", 122, 136);
+        gfx_PrintStringXY("GET READY...", 122, 136);
     }
 
-    /* bordure rouge : Isaac vient de prendre des degats */
+    /* red border: Isaac just took damage */
     if (hurtflash) {
         hurtflash--;
         gfx_SetColor(COL_BLOOD);
@@ -2306,7 +2305,7 @@ void play_draw_hud(const Game *g, const Isaac *iz)
     uint8_t nhearts = (uint8_t)(iz->hp_max >> 1);
     uint8_t i;
 
-    /* coeurs */
+    /* hearts */
     for (i = 0; i < nhearts && i < 8; i++) {
         const gfx_sprite_t *s = hud_empty;
         if (iz->hp >= (uint8_t)(2 * i + 2)) s = hud_heart;
@@ -2314,7 +2313,7 @@ void play_draw_hud(const Game *g, const Isaac *iz)
         gfx_TransparentSprite_NoClip(s, (uint24_t)(2 + i * 9), 2);
     }
 
-    /* coeurs d'ame (a droite des rouges) */
+    /* soul hearts (right of the red ones) */
     {
         uint8_t ns = (uint8_t)(iz->hp_soul >> 1);
         uint8_t rem = (uint8_t)(iz->hp_soul & 1);
@@ -2327,7 +2326,7 @@ void play_draw_hud(const Game *g, const Isaac *iz)
                                          (uint24_t)(x0 + ns * 9), 2);
     }
 
-    /* compteurs */
+    /* counters */
     gfx_SetTextFGColor(COL_OFFWHITE);
     gfx_SetTextScale(1, 1);
     gfx_TransparentSprite_NoClip(mini_coin, (uint24_t)4, 226);
@@ -2340,17 +2339,17 @@ void play_draw_hud(const Game *g, const Isaac *iz)
     gfx_PrintStringXY("x", 109, 226);
     gfx_PrintUInt(iz->keys, 2);
 
-    /* malédiction de l'etage : point d'exclamation */
+    /* floor curse: exclamation mark */
     if (g->curse) {
         gfx_SetTextFGColor(COL_BLOOD);
         gfx_PrintStringXY("!", 289, 2);
     }
 
-    /* etage */
+    /* floor */
     gfx_PrintStringXY((g->floor == 1) ? "B1"
                      : (g->floor == 2) ? "B2" : "B3", 300, 2);
 
-    /* barre HP boss */
+    /* boss HP bar */
     {
         uint8_t alive = 0;
         uint16_t hp = 0;

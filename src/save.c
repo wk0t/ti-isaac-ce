@@ -56,9 +56,8 @@ uint8_t save_read(uint8_t idx, SaveSlot *s)
     if (idx > 2) return 0;
     f = ti_Open(slot_names[idx], "r");
     if (!f) return 0;
-    /* lit au plus la taille reelle de l'AppVar : une sauvegarde d'une
-       version plus ancienne (plus courte) ou future (plus longue) reste
-       lisible par prefixe */
+    /* reads at most the real size of the AppVar: a save from an older
+       (shorter) or future (longer) version stays readable by prefix */
     n = ti_GetSize(f);
     if (n > sizeof(SaveSlot)) n = (uint16_t)sizeof(SaveSlot);
     if (ti_Read(s, n, 1, f) != 1) {

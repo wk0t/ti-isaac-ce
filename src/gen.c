@@ -29,8 +29,8 @@ uint8_t gen_degree(const Game *g, uint8_t cx, uint8_t cy)
     return d;
 }
 
-/* Profondeur BFS (en nombre de salles) depuis la salle aux coordonnees passees.
-   depth[y][x] ; retoune le nombre de salles atteintes. */
+/* BFS depth (in rooms) from the given cell.
+   depth[y][x]; returns the number of rooms reached. */
 static uint8_t bfs_depth(const Game *g, uint8_t sx, uint8_t sy,
                          uint8_t depth[MAP_H][MAP_W])
 {
@@ -65,7 +65,7 @@ uint8_t gen_reachable(const Game *g, uint8_t cx, uint8_t cy)
     return bfs_depth(g, cx, cy, depth);
 }
 
-/* --- placement d'obstacles --------------------------------------------- */
+/* --- obstacle placement ------------------------------------------------- */
 
 static void put_obst(RoomState *r, uint8_t type, uint8_t tx, uint8_t ty)
 {
@@ -80,12 +80,12 @@ static void put_obst(RoomState *r, uint8_t type, uint8_t tx, uint8_t ty)
     r->n_obst++;
 }
 
-/* tuile jouable : hors des bords et des couloirs devant les portes */
+/* playable tile: outside the borders and the corridors in front of doors */
 static uint8_t safe_tile(uint8_t tx, uint8_t ty)
 {
     if (tx < 2 || tx > 15 || ty < 2 || ty > 10) return 0;
-    if (tx >= 6 && tx <= 11 && (ty <= 2 || ty >= 10)) return 0; /* couloirs N/S */
-    if (ty >= 5 && ty <= 7 && (tx <= 2 || tx >= 15)) return 0;  /* couloirs W/E */
+    if (tx >= 6 && tx <= 11 && (ty <= 2 || ty >= 10)) return 0; /* N/S corridors */
+    if (ty >= 5 && ty <= 7 && (tx <= 2 || tx >= 15)) return 0;  /* W/E corridors */
     return 1;
 }
 
@@ -94,11 +94,11 @@ static void put_safe(RoomState *r, uint8_t type, uint8_t tx, uint8_t ty)
     if (safe_tile(tx, ty)) put_obst(r, type, tx, ty);
 }
 
-/* population d'obstacles propre a chaque etage */
+/* obstacle pool specific to each floor */
 static uint8_t pool_obst(uint8_t floor)
 {
     uint8_t roll = (uint8_t)rng_range(100);
-    if (floor <= 1) {            /* cave : rochers, poops, quelques feux/cactus */
+    if (floor <= 1) {            /* basement: rocks, poops, a few fires/cacti */
         if (roll < 48)  return OB_ROCK;
         if (roll < 60)  return OB_ROCK2;
         if (roll < 74)  return OB_POOP;
@@ -106,7 +106,7 @@ static uint8_t pool_obst(uint8_t floor)
         if (roll < 92)  return OB_FIRE;
         return OB_CACTUS;
     }
-    if (floor == 2) {            /* etage 2 : maconnerie et premieres fosses */
+    if (floor == 2) {            /* floor 2: masonry and first pits */
         if (roll < 26) return OB_ROCK;
         if (roll < 46) return OB_ROCK2;
         if (roll < 61) return OB_BLOCK;
@@ -114,7 +114,7 @@ static uint8_t pool_obst(uint8_t floor)
         if (roll < 90) return OB_SPIKE;
         return OB_FIRE;
     }
-    if (roll < 18) return OB_ROCK;   /* profondeurs : os et fosses dominent */
+    if (roll < 18) return OB_ROCK;   /* depths: bones and pits dominate */
     if (roll < 40) return OB_ROCK2;
     if (roll < 60) return OB_BLOCK;
     if (roll < 82) return OB_PIT;
@@ -124,18 +124,18 @@ static uint8_t pool_obst(uint8_t floor)
 static void layout_obstacles(RoomState *r, uint8_t floor)
 {
     switch (rng_range(12)) {
-    case 0: /* salle quasi vide, un ou deux tas decoratifs */
+    case 0: /* almost empty room, one or two decorative piles */
         if (rng_range(2)) put_safe(r, OB_POOP, 4, 4);
         if (rng_range(2)) put_safe(r, OB_BONES, 12, 8);
         break;
-    case 1: /* carre central */
+    case 1: /* central square */
         put_safe(r, pool_obst(floor), 7, 5);
         put_safe(r, pool_obst(floor), 10, 5);
         put_safe(r, pool_obst(floor), 7, 7);
         put_safe(r, pool_obst(floor), 10, 7);
         put_safe(r, pool_obst(floor), 8, 6);
         break;
-    case 2: /* deux rangees horizontales decalees */
+    case 2: /* two offset horizontal rows */
         put_safe(r, pool_obst(floor), 5, 4);
         put_safe(r, pool_obst(floor), 6, 4);
         put_safe(r, pool_obst(floor), 7, 4);
@@ -143,14 +143,14 @@ static void layout_obstacles(RoomState *r, uint8_t floor)
         put_safe(r, pool_obst(floor), 11, 8);
         put_safe(r, pool_obst(floor), 12, 8);
         break;
-    case 3: /* piliers aux angles */
+    case 3: /* pillars in the corners */
         put_safe(r, pool_obst(floor), 3, 3);
         put_safe(r, pool_obst(floor), 14, 3);
         put_safe(r, pool_obst(floor), 3, 9);
         put_safe(r, pool_obst(floor), 14, 9);
         put_safe(r, pool_obst(floor), 8, 6);
         break;
-    case 4: /* fosses en diagonale oppossee */
+    case 4: /* pits on the opposite diagonal */
         put_safe(r, OB_PIT, 3, 3);
         put_safe(r, OB_PIT, 4, 3);
         put_safe(r, OB_PIT, 3, 4);
@@ -158,7 +158,7 @@ static void layout_obstacles(RoomState *r, uint8_t floor)
         put_safe(r, OB_PIT, 14, 9);
         put_safe(r, OB_PIT, 14, 8);
         break;
-    case 5: /* couloir de maconnerie indestructible */
+    case 5: /* indestructible masonry corridor */
         put_safe(r, OB_BLOCK, 5, 4);
         put_safe(r, OB_BLOCK, 5, 6);
         put_safe(r, OB_BLOCK, 5, 8);
@@ -166,7 +166,7 @@ static void layout_obstacles(RoomState *r, uint8_t floor)
         put_safe(r, OB_BLOCK, 12, 6);
         put_safe(r, OB_BLOCK, 12, 8);
         break;
-    case 6: /* grande fosse centrale a deux rangees */
+    case 6: /* large central pit in two rows */
         put_safe(r, OB_PIT, 7, 4);
         put_safe(r, OB_PIT, 8, 4);
         put_safe(r, OB_PIT, 9, 4);
@@ -174,7 +174,7 @@ static void layout_obstacles(RoomState *r, uint8_t floor)
         put_safe(r, OB_PIT, 8, 7);
         put_safe(r, OB_PIT, 9, 7);
         break;
-    case 7: /* pics aux quatres coins et coeur variable */
+    case 7: /* spikes in the four corners and a random heart */
         put_safe(r, OB_SPIKE, 4, 4);
         put_safe(r, OB_SPIKE, 13, 4);
         put_safe(r, OB_SPIKE, 4, 8);
@@ -182,7 +182,7 @@ static void layout_obstacles(RoomState *r, uint8_t floor)
         put_safe(r, pool_obst(floor), 7, 6);
         put_safe(r, pool_obst(floor), 10, 6);
         break;
-    case 8: /* couronne autour du centre libre */
+    case 8: /* ring around the free center */
         put_safe(r, pool_obst(floor), 7, 4);
         put_safe(r, pool_obst(floor), 10, 4);
         put_safe(r, pool_obst(floor), 5, 6);
@@ -190,7 +190,7 @@ static void layout_obstacles(RoomState *r, uint8_t floor)
         put_safe(r, pool_obst(floor), 7, 8);
         put_safe(r, pool_obst(floor), 10, 8);
         break;
-    case 9: /* damier en rangees decalees */
+    case 9: /* checkerboard in offset rows */
         put_safe(r, pool_obst(floor), 4, 3);
         put_safe(r, pool_obst(floor), 7, 3);
         put_safe(r, pool_obst(floor), 10, 3);
@@ -200,7 +200,7 @@ static void layout_obstacles(RoomState *r, uint8_t floor)
         put_safe(r, pool_obst(floor), 10, 7);
         put_safe(r, pool_obst(floor), 13, 7);
         break;
-    case 10: /* colonnes laterales, couloir axial libre */
+    case 10: /* side columns, free axial corridor */
         put_safe(r, pool_obst(floor), 3, 4);
         put_safe(r, pool_obst(floor), 3, 6);
         put_safe(r, pool_obst(floor), 3, 8);
@@ -208,7 +208,7 @@ static void layout_obstacles(RoomState *r, uint8_t floor)
         put_safe(r, pool_obst(floor), 14, 6);
         put_safe(r, pool_obst(floor), 14, 8);
         break;
-    default: /* hall : deux rangees de trois */
+    default: /* hall: two rows of three */
         put_safe(r, pool_obst(floor), 6, 4);
         put_safe(r, pool_obst(floor), 8, 4);
         put_safe(r, pool_obst(floor), 10, 4);
@@ -217,7 +217,7 @@ static void layout_obstacles(RoomState *r, uint8_t floor)
         put_safe(r, pool_obst(floor), 10, 7);
         break;
     }
-    /* densite croissante : obstacles epars supplementaires aux etages 2-3 */
+    /* increasing density: extra scattered obstacles on floors 2-3 */
     if (floor >= 2) {
         uint8_t extra = (uint8_t)(floor == 2 ? 2 : 3);
         while (extra--) {
@@ -228,7 +228,7 @@ static void layout_obstacles(RoomState *r, uint8_t floor)
     }
 }
 
-/* voisin direct de la salle de depart ? (manhattan = 1) */
+/* direct neighbor of the start room? (manhattan = 1) */
 static uint8_t adj_start(uint8_t x, uint8_t y, uint8_t sx, uint8_t sy)
 {
     uint8_t dx = (uint8_t)(x > sx ? x - sx : sx - x);
@@ -236,7 +236,7 @@ static uint8_t adj_start(uint8_t x, uint8_t y, uint8_t sx, uint8_t sy)
     return (uint8_t)(dx + dy == 1);
 }
 
-/* --- generation d'un etage --------------------------------------------- */
+/* --- floor generation ---------------------------------------------------- */
 
 void gen_floor(Game *g, uint8_t floor)
 {
@@ -252,7 +252,7 @@ void gen_floor(Game *g, uint8_t floor)
     g->floor = floor;
     g->kills = 0;
     g->curse = 0;
-    /* etages profonds : malédiction OBSCURITE ou HATE */
+    /* deep floors: DARKNESS or HASTE curse */
     if (floor >= 2) {
         uint8_t roll = rng_range(100);
         if (roll < 30)      g->curse = CURSE_DARKNESS;
@@ -284,7 +284,7 @@ void gen_floor(Game *g, uint8_t floor)
         g->n_rooms++;
     }
 
-    /* --- boss : cul-de-sac le plus profond -------------------------------- */
+    /* --- boss: deepest dead end --------------------------------------------- */
     bfs_depth(g, start_x, start_y, depth);
     boss = 0;
     {
@@ -300,7 +300,7 @@ void gen_floor(Game *g, uint8_t floor)
     if (!boss) boss = (uint8_t)(g->n_rooms - 1);
     g->rooms[boss].kind = RM_BOSS;
 
-    /* --- trone : cul-de-sac ou coude, hors boss, hors voisins du depart -- */
+    /* --- treasure: dead end or corner, not boss, not next to start ---------- */
     {
         uint8_t treas = 0;
         for (tries = 0; tries < 60 && !treas; tries++) {
@@ -319,7 +319,7 @@ void gen_floor(Game *g, uint8_t floor)
         if (treas) g->rooms[treas].kind = RM_TREASURE;
     }
 
-    /* --- boutique : un autre NORMAL degre <= 2, hors voisins du depart -- */
+    /* --- shop: another NORMAL with degree <= 2, not next to start ----------- */
     {
         uint8_t shop = 0;
         for (tries = 0; tries < 60 && !shop; tries++) {
@@ -346,11 +346,11 @@ void gen_floor(Game *g, uint8_t floor)
             r->pick[1].x = (int16_t)(11 * 2 * TILE + TILE);
             r->pick[1].y = (int16_t)(6 * 2 * TILE + TILE);
             r->n_pick = 2;
-            put_obst(r, OB_STOCK, 13, 8);   /* machine a dons */
+            put_obst(r, OB_STOCK, 13, 8);   /* donation machine */
         }
     }
 
-    /* --- salle secrete : case vide adjacente a une salle non-boss ------- */
+    /* --- secret room: empty cell adjacent to a non-boss room --------------- */
     {
         uint8_t sx = 0, sy = 0, found = 0;
         for (tries = 0; tries < 120 && !found; tries++) {
@@ -364,7 +364,7 @@ void gen_floor(Game *g, uint8_t floor)
             if (g->grid[ny][nx]) continue;
             sx = (uint8_t)nx; sy = (uint8_t)ny; found = 1;
         }
-        if (!found) {   /* balayage deterministe en secours */
+        if (!found) {   /* deterministic sweep as fallback */
             uint8_t x, y, d;
             for (y = 0; y < MAP_H && !found; y++)
                 for (x = 0; x < MAP_W && !found; x++) {
@@ -388,7 +388,7 @@ void gen_floor(Game *g, uint8_t floor)
             cx_rooms[g->n_rooms] = sx;
             cy_rooms[g->n_rooms] = sy;
             r->kind = RM_SECRET;
-            /* butin : 4 pieces en losange + coeur au centre */
+            /* loot: 4 coins in a diamond + heart in the center */
             r->pick[0].type = PK_COIN; r->pick[0].tx = 8;  r->pick[0].ty = 4;
             r->pick[0].x = (int16_t)(8 * 2 * TILE + TILE);
             r->pick[0].y = (int16_t)(4 * 2 * TILE + TILE);
@@ -412,7 +412,7 @@ void gen_floor(Game *g, uint8_t floor)
         }
     }
 
-    /* --- salle du diable (etages 1-2) : adjacente au boss, fermee ---- */
+    /* --- devil room (floors 1-2): adjacent to boss, locked ------------------ */
     if (floor <= 2) {
         uint8_t bxc = cx_rooms[boss], byc = cy_rooms[boss];
         for (tries = 0; tries < 120; tries++) {
@@ -426,7 +426,7 @@ void gen_floor(Game *g, uint8_t floor)
             cx_rooms[g->n_rooms] = (uint8_t)nx;
             cy_rooms[g->n_rooms] = (uint8_t)ny;
             r = &g->rooms[g->n_rooms];
-            r->kind = RM_DEVIL;   /* flags : fermee tant que bit2 absent */
+            r->kind = RM_DEVIL;   /* flags: locked until bit2 is set */
             r->pick[0].type = PK_DEVIL;
             r->pick[0].price = (uint8_t)(3 + rng_range(3));
             r->pick[0].tx = 6;  r->pick[0].ty = 6;
@@ -443,8 +443,8 @@ void gen_floor(Game *g, uint8_t floor)
         }
     }
 
-    /* --- salle de sacrifice (etage 1) ou salle maudite (etages 2+)
-           adjacente a une salle ordinaire ---- */
+    /* --- sacrifice room (floor 1) or cursed room (floors 2+)
+           adjacent to a normal room ---- */
     {
         uint8_t sx = 0, sy = 0, found = 0;
         uint8_t cursed = (uint8_t)(floor >= 2 && rng_range(2) == 0);
@@ -467,7 +467,7 @@ void gen_floor(Game *g, uint8_t floor)
             cx_rooms[g->n_rooms] = sx;
             cy_rooms[g->n_rooms] = sy;
             if (cursed) {
-                /* salle maudite : gros butin mais pieges et porte qui mord */
+                /* cursed room: big loot but traps and a biting door */
                 r->kind = RM_MAUDITE;
                 put_obst(r, OB_SPIKE, 8, 6);
                 put_obst(r, OB_SPIKE, 4, 4);
@@ -483,23 +483,23 @@ void gen_floor(Game *g, uint8_t floor)
                 r->n_pick = 2;
             } else {
                 r->kind = RM_SACRI;
-                put_obst(r, OB_SPIKE, 8, 6);   /* pic central du sacrifice */
+                put_obst(r, OB_SPIKE, 8, 6);   /* central sacrifice spike */
             }
             g->n_rooms++;
         }
     }
 
-    /* --- remplissage des salles normales ----------------------------------- */
+    /* --- filling of normal rooms -------------------------------------------- */
     for (i = 0; i < g->n_rooms; i++) {
         RoomState *r = &g->rooms[i];
         if (r->kind != RM_NORMAL) continue;
         layout_obstacles(r, floor);
-        /* ~1 chance sur 10 d'un pickup initial */
+        /* ~1 in 10 chance of an initial pickup */
         if (rng_range(10) == 0 && r->n_pick < MAX_PICKUPS) {
             uint8_t type = (uint8_t)(PK_HEART + rng_range(5));
             if (type == PK_HEART && rng_range(2)) type = PK_HALF;
             if (type == PK_COIN && rng_range(6) == 0) type = PK_SILVER;
-            if (rng_range(12) == 0) type = PK_SOUL;   /* coeur d'ame, rare */
+            if (rng_range(12) == 0) type = PK_SOUL;   /* soul heart, rare */
             r->pick[r->n_pick].type = type;
             r->pick[r->n_pick].tx = (uint8_t)(3 + rng_range(12));
             r->pick[r->n_pick].ty = (uint8_t)(2 + rng_range(9));
@@ -509,7 +509,7 @@ void gen_floor(Game *g, uint8_t floor)
                 (int16_t)(r->pick[r->n_pick].ty * 2 * TILE + TILE);
             r->n_pick++;
         }
-        /* coffre simple : on touche, ca s'ouvre */
+        /* plain chest: touch it and it opens */
         if (rng_range(100) < ((g->floor == 1) ? 25 : 30)) {
             uint8_t attempts, tx = 4, ty = 4, ok = 0;
             for (attempts = 0; attempts < 20 && !ok; attempts++) {
@@ -528,7 +528,7 @@ void gen_floor(Game *g, uint8_t floor)
                 p->y = (int16_t)(ty * 2 * TILE + TILE);
             }
         }
-        /* coffre verrouille : cle requise, butin garanti en argent */
+        /* locked chest: key required, guaranteed silver loot */
         if (rng_range(100) < ((g->floor == 1) ? 12 : 18)) {
             uint8_t attempts, tx = 12, ty = 4, ok = 0;
             for (attempts = 0; attempts < 20 && !ok; attempts++) {
@@ -550,8 +550,8 @@ void gen_floor(Game *g, uint8_t floor)
     }
 
     {
-        /* items : pool commun et pool rare, rarete croissante avec l'etage */
-        static const uint8_t pool_commun[11] = {
+        /* items: common pool and rare pool, rarity grows with the floor */
+        static const uint8_t pool_common[11] = {
             IT_ONION, IT_BREAKFAST, IT_SPOON, IT_BLOOD, IT_LUNCH, IT_NUM1,
             IT_BOUSSOLE, IT_AIMANT, IT_BOTTES, IT_STEAK, IT_CRANE
         };
@@ -563,13 +563,13 @@ void gen_floor(Game *g, uint8_t floor)
                                   : (floor == 2) ? 40 : 65);
         uint8_t tries3;
         g->item = (rng_range(100) < rare_pct)
-            ? pool_rare[rng_range(10)] : pool_commun[rng_range(11)];
+            ? pool_rare[rng_range(10)] : pool_common[rng_range(11)];
         g->item2 = (rng_range(100) < (uint8_t)(rare_pct / 2))
-            ? pool_rare[rng_range(10)] : pool_commun[rng_range(11)];
+            ? pool_rare[rng_range(10)] : pool_common[rng_range(11)];
         for (tries3 = 0; tries3 < 6 && g->item2 == g->item; tries3++)
-            g->item2 = pool_commun[rng_range(11)];
+            g->item2 = pool_common[rng_range(11)];
     }
 
-    /* position : salle de depart */
+    /* position: start room */
     g->cur = (uint8_t)(g->grid[start_y][start_x] - 1);
 }

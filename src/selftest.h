@@ -1,8 +1,8 @@
 #ifndef ISAAC_SELFTEST_H
 #define ISAAC_SELFTEST_H
 
-/* Execute la suite de self-tests embarques. Renvoie 0 si OK, sinon un code.
-   Affiche l'etat a l'ecran (graphx doit etre actif). */
+/* Runs the embedded self-test suite. Returns 0 if OK, else a code.
+   Displays the state on screen (graphx must be active). */
 uint8_t selftest_run(void);
 
 #endif

@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
-"""Art pixel du mini Binding of Isaac CE — source unique des sprites.
+"""Pixel art of mini Binding of Isaac CE — single source of the sprites.
 
-Chaque sprite = liste de lignes de texte. Caracteres -> entries PALETTE
-(index deterministe = index convimg). '.' = transparent (index 0).
-tools/make_gfx.py valide, derive (recolors/rotations) et emet :
+Each sprite = list of text rows. Characters -> PALETTE entries
+(deterministic index = convimg index). '.' = transparent (index 0).
+tools/make_gfx.py validates, derives (recolors/rotations) and emits:
   src/gfx/*.png, src/gfx/convimg.yaml, src/palette.h
 
-Regles : 16x16 mobs/isaac/pickups/portes, 8x8 larmes et HUD.
-Toujours ui : reflet en haut-gauche (e, w, H), ombre en bas-droite
-(S, a, h, k, Q, B), contour fonce pour le contraste.
+Rules: 16x16 mobs/isaac/pickups/doors, 8x8 tears and HUD.
+Always UI: highlight top-left (e, w, H), shadow bottom-right
+(S, a, h, k, Q, B), dark outline for contrast.
 """
 
-# index -> (char, nom, (r, g, b))
+# index -> (char, name, (r, g, b))
 PALETTE = [
     (0,  '.', 'TRANSP',     (255, 0, 255)),
     (1,  'W', 'WHITE',      (255, 255, 255)),
@@ -104,7 +104,7 @@ ART['isaac_1'] = [
     "....SS....SS....",
 ]
 
-# --- larme joueur (8x8) -------------------------------------------------
+# --- player tear (8x8) -------------------------------------------------
 ART['tear'] = [
     "........",
     "..cccc..",
@@ -212,7 +212,7 @@ ART['pickup_bomb'] = [
     "................",
 ]
 
-# --- environnement (16x16) ----------------------------------------------
+# --- environment (16x16) ----------------------------------------------
 ART['rock'] = [
     "................",
     "................",
@@ -422,7 +422,7 @@ ART['pedestal'] = [
     "..vvvvvvvvvv....",
 ]
 
-# --- portes (16x16) : *_h horizontal, _v derive par rotation 90deg --------
+# --- doors (16x16): *_h horizontal, _v derived by 90deg rotation ---------
 ART['door_h_open'] = [
     "................",
     "...vvvvvvvv.....",
@@ -480,7 +480,7 @@ ART['door_h_lock'] = [
     "................",
 ]
 
-# --- ennemis (16x16) -----------------------------------------------------
+# --- enemies (16x16) -----------------------------------------------------
 ART['gaper_0'] = [
     "................",
     ".....gggggg.....",
@@ -614,7 +614,7 @@ ART['horf'] = [
     "................",
 ]
 
-# --- boss Monstro (16x16, rendu x2) ---------------------------------------
+# --- boss Monstro (16x16, rendered x2) ---------------------------------------
 ART['monstro_0'] = [
     "................",
     "......QQQQ......",
@@ -653,7 +653,7 @@ ART['monstro_1'] = [
     "......QQQQ......",
 ]
 
-# --- boss Maman (16x16, rendu x3) ------------------------------------------
+# --- boss Mom (16x16, rendered x3) ------------------------------------------
 ART['maman_0'] = [
     "................",
     ".....kkkkkk.....",
@@ -921,7 +921,7 @@ ART['it_skull'] = [
     "................",
 ]
 
-# --- nouveaux items (8) -----------------------------------------------
+# --- new items (8) -----------------------------------------------
 
 ART['it_needle'] = [
     "................",
@@ -1075,7 +1075,7 @@ ART['it_clover'] = [
     "................",
 ]
 
-# --- trappe vers l'etage suivant -----------------------------------------
+# --- trapdoor to the next floor -----------------------------------------
 
 ART['trapdoor'] = [
     "................",
@@ -1096,7 +1096,7 @@ ART['trapdoor'] = [
     "................",
 ]
 
-# --- personnages (Isaac : chauve ; ici les variantes jouables) -----------
+# --- characters (Isaac: bald; here the playable variants) ----------------
 
 ART['magda_0'] = [
     "................",
@@ -1279,30 +1279,30 @@ ART['mini_key'] = [
     "...aAA..",
 ]
 
-# --- derive a l'execution par make_gfx.py -----------------------------------
-# TRANFORMS: recolorie les caracteres selon une table puis re-emet sous un nom.
+# --- derived at runtime by make_gfx.py -----------------------------------
+# TRANFORMS: recolors the characters according to a table then re-emits under a name.
 DERIVED = {
-    # larme ennemie = larme joueur recoloriee
+    # enemy tear = recolored player tear
     'eshot': ('tear', {'C': 'b', 'c': 'B', 'e': 'H'}),
-    # isaac blesse : teint clair fige (flash de degats)
+    # hurt isaac: pale frozen tint (damage flash)
     'isaac_h': ('isaac_0', {'s': 'w', 'S': 'k', 'C': 'k'}),
-    # autres persos blesses : meme prinpe, coiffure conservee
+    # other hurt characters: same principle, hair kept
     'magda_h':  ('magda_0',  {'s': 'w', 'S': 'k', 'C': 'k'}),
     'caine_h':  ('caine_0',  {'s': 'w', 'S': 'k', 'C': 'k'}),
     'lazare_h': ('lazare_0', {'s': 'w', 'S': 'k', 'C': 'k'}),
-    # champions : recolors rouges, robustes, butin garanti
+    # champions: red recolors, tough, guaranteed loot
     'gaper_c':  ('gaper_0',  {'g': 'X'}),
     'fly_c':     ('fly_0',    {'o': 'b'}),
     'pooter_c':  ('pooter_0', {'u': 'b'}),
     'horf_c':    ('horf',     {'g': 'b'}),
-    # piece d'argent (vaut 5) : coin recolore en metal blanc
+    # silver coin (worth 5): coin recolored to white metal
     'pickup_silver': ('pickup_coin', {'A': 'w', 'a': 'k'}),
-    # coeur d'ame : recolor bleu, absorbe avant les coeurs rouges
+    # soul heart: recolored blue, absorbed before red hearts
     'pickup_soul':   ('pickup_heart', {'b': 'c', 'H': 'C', 'h': 'c'}),
     'hud_soul':      ('hud_heart', {'b': 'c', 'H': 'C', 'h': 'c'}),
     'hud_soul_half': ('hud_half',  {'b': 'c', 'H': 'C', 'h': 'c'}),
 }
-# rotations (90 deg anti-horaire) appliquees aux portes horizontales
+# rotations (90 deg counter-clockwise) applied to horizontal doors
 ROTATED = {
     'door_v_open': 'door_h_open',
     'door_v_closed': 'door_h_closed',

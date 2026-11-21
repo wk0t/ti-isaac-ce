@@ -1,4 +1,4 @@
-/* selftest.c — auto-tests embarques (RNG, generation, collisions). */
+/* selftest.c — embedded self-tests (RNG, generation, collisions). */
 #include <graphx.h>
 #include <keypadc.h>
 #include <string.h>
@@ -22,7 +22,7 @@ static uint32_t rng_checksum(uint32_t seed)
     return sum;
 }
 
-/* 0 = OK ; codes 3..7, 13..15 = invalide */
+/* 0 = OK; codes 3..7, 13..15 = invalid */
 static uint8_t check_floor(const Game *g)
 {
     const RoomState *start = 0, *boss = 0, *treas = 0,
@@ -53,7 +53,7 @@ static uint8_t check_floor(const Game *g)
     if (!shop || shop == start || shop == boss || shop == treas) return 13;
     if (!secret) return 14;
     if (devil && boss) {
-        /* pacte ferme au depart, salle collee au boss */
+        /* deal locked at start, room glued to the boss */
         uint8_t cx, cy, dx1 = 0, dy1 = 0, bx = 0, by = 0, found = 0;
         if (devil->flags & 4) return 18;
         for (cy = 0; cy < MAP_H; cy++)
@@ -71,7 +71,7 @@ static uint8_t check_floor(const Game *g)
         if ((uint8_t)(cx + cy) != 1) return 18;
     }
     if (sacri) {
-        /* le pic du sacrifice est au centre de la salle */
+        /* the sacrifice spike is in the center of the room */
         uint8_t j2, ok = 0;
         for (j2 = 0; j2 < sacri->n_obst; j2++)
             if (sacri->obst[j2].type == OB_SPIKE
@@ -80,7 +80,7 @@ static uint8_t check_floor(const Game *g)
         if (!ok) return 19;
     }
 
-    {   /* connexite : tout atteignable depuis le depart */
+    {   /* connectivity: everything reachable from the start */
         uint8_t cx, cy, found = 0;
         uint8_t si = (uint8_t)(start - g->rooms);
         for (cy = 0; cy < MAP_H && !found; cy++)
@@ -111,7 +111,7 @@ static uint8_t check_collision(void)
     return 0;
 }
 
-/* passage des portes : franc, refuse sans cle, la cle ouvre le trone */
+/* door passage: free, refused without a key, the key opens the treasure room */
 static uint8_t check_transit(void)
 {
     Isaac ti;
@@ -121,7 +121,7 @@ static uint8_t check_transit(void)
     memset(&in, 0, sizeof in);
     in.up = 1;
 
-    /* cas 1 : porte nord vers salle normale -> transit attendu */
+    /* case 1: north door to a normal room -> transit expected */
     memset(&tg, 0, sizeof tg);
     tg.grid[2][2] = 1;  tg.rooms[0].kind = RM_START;
     tg.grid[1][2] = 2;  tg.rooms[1].kind = RM_NORMAL;
@@ -136,7 +136,7 @@ static uint8_t check_transit(void)
     }
     if (f >= 40) return 10;
 
-    /* cas 2 : porte nord vers trone, sans cle -> bloque au seuil */
+    /* case 2: north door to the treasure room, no key -> blocked at the threshold */
     memset(&tg, 0, sizeof tg);
     tg.grid[2][2] = 1;  tg.rooms[0].kind = RM_START;
     tg.grid[1][2] = 2;  tg.rooms[1].kind = RM_TREASURE;
@@ -147,7 +147,7 @@ static uint8_t check_transit(void)
         if (play_update(&tg, &ti, &in, &dir) != EV_NONE) return 11;
     if (ti.y >= 8 || ti.keys) return 11;
 
-    /* cas 3 : une cle ouvre le trone et se consomme */
+    /* case 3: one key opens the treasure room and is consumed */
     ti.keys = 1;
     for (f = 0; f < 40; f++) {
         uint8_t ev = play_update(&tg, &ti, &in, &dir);
@@ -180,7 +180,7 @@ static void show_result(uint8_t fails, uint8_t ntests, uint8_t code, uint32_t se
         gfx_PrintUInt(seed, 4);
     }
     gfx_SetTextFGColor(COL_OFFWHITE);
-    gfx_PrintStringXY("ENTREE : CONTINUER", 100, 196);
+    gfx_PrintStringXY("ENTER: CONTINUE", 100, 196);
     gfx_SwapDraw();
 
     for (;;) {
@@ -197,14 +197,14 @@ uint8_t selftest_run(void)
     uint32_t s;
     uint8_t c;
 
-    /* RNG deterministe pour une meme seed */
+    /* deterministic RNG for the same seed */
     ntests++;
     if (rng_checksum(12345u) != rng_checksum(12345u)) { fails++; code = 1; }
-    /* RNG different pour deux seeds differentes */
+    /* different RNG for two different seeds */
     ntests++;
     if (rng_checksum(1u) == rng_checksum(2u)) { fails++; code = 2; }
 
-    /* generation etage 1 : 64 seeds */
+    /* floor 1 generation: 64 seeds */
     for (s = 1; s <= 64; s++) {
         rng_seed(s);
         gen_floor(&tg, 1);
@@ -212,7 +212,7 @@ uint8_t selftest_run(void)
         ntests++;
         if ((c = check_floor(&tg))) { fails++; code = c; fseed = s; }
     }
-    /* generation etage 2 : 16 seeds */
+    /* floor 2 generation: 16 seeds */
     for (s = 65; s <= 80; s++) {
         rng_seed(s);
         gen_floor(&tg, 2);
@@ -220,15 +220,15 @@ uint8_t selftest_run(void)
         ntests++;
         if ((c = check_floor(&tg))) { fails++; code = c; fseed = s; }
     }
-    /* collisions diagonales sur rocher factice */
+    /* diagonal collisions on a fake rock */
     ntests++;
     if ((c = check_collision())) { fails++; code = c; }
 
-    /* passage des portes : franc / refuse sans cle / la cle ouvre le trone */
+    /* door passage: free / refused without key / key opens the treasure room */
     ntests++;
     if ((c = check_transit())) { fails++; code = c; }
 
-    /* sauvegarde : pack puis unpack restitue la run (round-trip) */
+    /* save: pack then unpack restores the run (round-trip) */
     {
         SaveSlot ss; Game g2; Isaac i2;
         uint8_t ok;
@@ -242,7 +242,7 @@ uint8_t selftest_run(void)
         tg.dmg_floor = 5;
         tg.dmg_run = 9;
         tg.rooms[0].count = 7;
-        /* metas geres par main : pack ne doit pas les ecraser */
+        /* meta managed by main: pack must not overwrite them */
         ss.unlocked = CHAR_UNLOCK_MAGDA;
         ss.wins_acc = 4;
         ss.kills_acc = 60;

@@ -1,38 +1,37 @@
 # MINI ISAAC (TI-83 Premium CE)
 
-Roguelike d'action inspire de *The Binding of Isaac*, ecrit en C pour l'eZ80
-de la TI-83 Premium CE avec la toolchain CEdev. Fan-game non officiel : tout le
-code et les graphismes (pixel art maison, 16x16) sont originaux.
+Action roguelike inspired by *The Binding of Isaac*, written in C for the
+TI-83 Premium CE eZ80 with the CEdev toolchain. Unofficial fan-game: all code
+and graphics (original home-made pixel art, 16x16) are original.
 
-## Contenu
+## Features
 
-- Etages aleatoires, salles, secrettes, boutique (pieces), tresors (cles)
-- Boss (Monstro, Maman), ennemis varies et champions (recolors coriaces)
-- 3+ personnages jouables deblocables : Isaac, Magda, Caine, Lazare (revit)
-- Objets passifs (24) : degats, portee, larmes perceantes, homing, venin...
-- Item actif TELE rechargeable, pacte du diable aux premiers etages
-- Maledictions d'etage (obscurite, harte), pieces d'argent (5), coeurs d'ame
-- Sauvegarde 3 slots (appvar), reprise de partie en cours
-- Selftest integre : [Yequ] sur l'ecran titre
+- Random floors, rooms, secret rooms, shop (coins), treasure rooms (keys)
+- Bosses (Monstro, Mom), varied enemies and champions (tough recolors)
+- 3+ playable unlockable characters: Isaac, Magda, Cain, Lazarus (revives)
+- 24 passive items: damage, range, piercing tears, homing, poison...
+- Rechargeable active TELE item, devil deal on the first floors
+- Floor curses (darkness, haste), silver coins (5), soul hearts
+- 3 save slots (appvars), resume an in-progress run
+- Built-in self-test: [Yequ] on the title screen
 
-## Touches
+## Controls
 
-- Croix directionnelle : se deplacer
-- 2 / 4 / 6 / 8 : tirer dans la direction
-- [MODE] : carte de l'etage, puis page stats (PV, DMG, VIT, CAD, objets)
-- [ENTREE] : reprendre la partie depuis la carte/stats
+- D-pad: move
+- 2 / 4 / 6 / 8: shoot in that direction
+- [MODE]: floor map, then stats page (HP, DMG, SPD, RATE, items)
+- [ENTER]: resume the run from the map/stats
 
-## Compiler
+## Build
 
-Toolchain CEdev requise (convimg + make). Les graphismes prennent source
-dans `tools/sprites_art.py` :
+CEdev toolchain required (convimg + make). Graphics are generated from
+`tools/sprites_art.py`:
 
     cd tools && python -X utf8 make_gfx.py
     cd ../src/gfx && convimg.exe
     make          # -> bin/ISAAC.8xp
 
-Transferer `bin/ISAAC.8xp` sur la calculatrice puis lancer ISAAC. Les
-sauvegardes (appvars `ISAACSV1..3`) sont archivees en flash a chaque
-sauvegarde : elles survivent aux resets de RAM et aux changements de
-version du programme (v1.0 -> v1.1 -> v1.2 ...). Ne supprimez pas ces
-appvars a la main, c'est la seule chose qui casse une sauvegarde.
+Transfer `bin/ISAAC.8xp` to the calculator, then launch ISAAC. Saves
+(appvars `ISAACSV1..3`) are archived to flash on every save: they survive
+RAM resets and program version changes (v1.0 -> v1.1 -> v1.2 ...). Do not
+delete these appvars by hand — that is the only thing that breaks a save.
